@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
+  Image,
   Text,
   TouchableOpacity,
   View,
@@ -42,7 +43,12 @@ const TopSection = () => {
             <Text className="text-[24px] text-white font-bold">Hi, User</Text>
             <Text className="text-[16px] text-white/50">welcome back</Text>
           </View>
-          <View className="h-[40px] w-[40px] rounded-full bg-black" />
+          <View className="h-[40px] w-[40px] rounded-full bg-black">
+            <Image
+              source={require("../../assets/images/profile.jpg")}
+              className="w-full h-full rounded-full aspect-square object-center object-cover "
+            />
+          </View>
         </View>
 
         {/* card carousel */}

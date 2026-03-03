@@ -1,3 +1,4 @@
+import useWalletTheme from "@/hooks/useWalletTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Eye, EyeOff, WalletMinimal } from "lucide-react-native";
 import { Dimensions, Text, TouchableOpacity, View } from "react-native";
@@ -6,10 +7,11 @@ const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
 
 const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
+  const { theme } = useWalletTheme(item.themeId);
   return (
     <View style={{ width: CARD_WIDTH, height: 180 }}>
       <LinearGradient
-        colors={item.gradientColors}
+        colors={theme.gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -63,7 +65,7 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
 
       {/* accent glow */}
       <LinearGradient
-        colors={[item.accentColor, "transparent"]}
+        colors={[theme.accentColor, "transparent"]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={{

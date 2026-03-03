@@ -7,6 +7,7 @@ export const CURRENT_GOALS = [
     target: 25000000,
     bgColor: "#EEF2FF",
     accentColor: "#6366f1",
+    themeId: "indigo",
   },
   {
     id: "2",
@@ -16,6 +17,7 @@ export const CURRENT_GOALS = [
     target: 5000000,
     bgColor: "#FFF4E5",
     accentColor: "#f97316",
+    themeId: "ember",
   },
   {
     id: "3",
@@ -25,6 +27,7 @@ export const CURRENT_GOALS = [
     target: 12000000,
     bgColor: "#F0FDF4",
     accentColor: "#00BC7D",
+    themeId: "forest",
   },
   {
     id: "4",
@@ -34,6 +37,7 @@ export const CURRENT_GOALS = [
     target: 7500000,
     bgColor: "#FDF4FF",
     accentColor: "#a855f7",
+    themeId: "violet",
   },
   {
     id: "5",
@@ -43,5 +47,16 @@ export const CURRENT_GOALS = [
     target: 50000000,
     bgColor: "#FFF1F2",
     accentColor: "#f43f5e",
+    themeId: "rose",
+  },
+  {
+    id: "6",
+    name: "Uniqlo",
+    icon: "👕",
+    current: 150000,
+    target: 600000,
+    bgColor: "#FFF1F2",
+    accentColor: "#f43f5e",
+    themeId: "ocean",
   },
 ];

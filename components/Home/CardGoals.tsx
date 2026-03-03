@@ -1,3 +1,4 @@
+import useWalletTheme from "@/hooks/useWalletTheme";
 import { Text, TouchableOpacity, View } from "react-native";
 
 const CardGoals = ({ goal }: any) => {
@@ -9,6 +10,9 @@ const CardGoals = ({ goal }: any) => {
     if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
     return amount.toString();
   };
+
+  const { theme } = useWalletTheme(goal.themeId);
+
   return (
     <TouchableOpacity
       key={goal.id}
@@ -39,7 +43,7 @@ const CardGoals = ({ goal }: any) => {
             width: 42,
             height: 42,
             borderRadius: 7,
-            backgroundColor: goal.bgColor,
+            backgroundColor: theme.bgColor,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -111,7 +115,7 @@ const CardGoals = ({ goal }: any) => {
             style={{
               fontSize: 13,
               fontWeight: "700",
-              color: goal.accentColor,
+              color: theme.accentColor,
             }}
           >
             Rp{formatAmount(goal.current)}
@@ -143,7 +147,7 @@ const CardGoals = ({ goal }: any) => {
               width: `${percentage}%`,
               height: "100%",
               borderRadius: 999,
-              backgroundColor: isCompleted ? "#00BC7D" : goal.accentColor,
+              backgroundColor: isCompleted ? "#00BC7D" : theme.accentColor,
             }}
           />
         </View>
