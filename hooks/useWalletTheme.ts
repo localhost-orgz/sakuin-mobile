@@ -22,6 +22,9 @@ export interface WalletTheme {
   bgColor: string;
   shadowColor: string;
   textColor: string;
+  cardColor: string;
+  cardColorBack: string;
+  iconBgColor: string;
 }
 
 export interface UseWalletThemeReturn {
@@ -40,6 +43,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#F0F9FF",
     shadowColor: "#0ea5e9",
     textColor: "#0369a1",
+    cardColor: "#1A9FD4",
+    cardColorBack: "#0F6A93",
+    iconBgColor: "#D6F0FF",
   },
   forest: {
     id: "forest",
@@ -49,6 +55,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#F0FDF4",
     shadowColor: "#22c55e",
     textColor: "#15803d",
+    cardColor: "#1DB954",
+    cardColorBack: "#117A38",
+    iconBgColor: "#D7F5E4",
   },
   ember: {
     id: "ember",
@@ -58,6 +67,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#FFF4E5",
     shadowColor: "#f97316",
     textColor: "#c2410c",
+    cardColor: "#E8620A",
+    cardColorBack: "#A84208",
+    iconBgColor: "#FFE2C2",
   },
   violet: {
     id: "violet",
@@ -67,6 +79,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#FDF4FF",
     shadowColor: "#a855f7",
     textColor: "#7e22ce",
+    cardColor: "#7B3FD4",
+    cardColorBack: "#4E1F96",
+    iconBgColor: "#F4D8FF",
   },
   indigo: {
     id: "indigo",
@@ -76,6 +91,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#EEF2FF",
     shadowColor: "#6366f1",
     textColor: "#4338ca",
+    cardColor: "#4F52E0",
+    cardColorBack: "#2D2FA8",
+    iconBgColor: "#D9DEFF",
   },
   rose: {
     id: "rose",
@@ -85,6 +103,9 @@ export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
     bgColor: "#FFF1F2",
     shadowColor: "#f43f5e",
     textColor: "#be123c",
+    cardColor: "#E8244A",
+    cardColorBack: "#A3122E",
+    iconBgColor: "#FFD6DB",
   },
 };
 

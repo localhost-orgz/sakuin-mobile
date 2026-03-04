@@ -35,7 +35,7 @@ const TopSection = () => {
   }).current;
 
   return (
-    <View className="w-full h-[390px] pt-5 bg-[#00BC7D] absolute top-0 left-0">
+    <View className="w-full h-[390px] pt-5 bg-[#00bf71] absolute top-0 left-0">
       <SafeAreaView>
         {/* User info */}
         <View className="flex flex-row items-center justify-between px-5">

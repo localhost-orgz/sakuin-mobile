@@ -1,9 +1,41 @@
-import { View, Text } from "react-native";
+import HeaderPage from "@/components/HeaderPage";
+import GoalCardsSection from "@/components/Portfolio/GoalCardsSection";
+import TotalBalance from "@/components/Portfolio/TotalBalance";
+import WalletCardsSection from "@/components/Portfolio/WalletCardsSection";
+import { CURRENT_GOALS } from "@/constants/goalsList";
+import { WALLET_LIST } from "@/constants/walletList";
+import { useState } from "react";
+import { ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+export default function PortfolioScreen() {
+  const [isBalanceShow, setIsBalanceShow] = useState(false);
+  const insets = useSafeAreaInsets();
 
-export default function Portfolio() {
   return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text className="text-2xl font-bold">Portfolio</Text>
-    </View>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#f5f6fa" }}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+    >
+      <HeaderPage title={"Portfolio"} />
+
+      <TotalBalance
+        isBalanceShow={isBalanceShow}
+        onBalanceShow={setIsBalanceShow}
+      />
+
+      <View>
+        <WalletCardsSection
+          isBalanceShow={isBalanceShow}
+          onBalanceShow={setIsBalanceShow}
+          wallets={WALLET_LIST}
+        />
+        <GoalCardsSection
+          isBalanceShow={isBalanceShow}
+          onBalanceShow={setIsBalanceShow}
+          goals={CURRENT_GOALS}
+        />
+      </View>
+    </ScrollView>
   );
 }

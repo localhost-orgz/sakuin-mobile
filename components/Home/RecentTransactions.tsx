@@ -52,11 +52,11 @@ const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
           shadowColor: "#000",
           shadowOffset: {
             width: 0,
-            height: 2,
+            height: 0,
           },
           shadowOpacity: 0.05,
           shadowRadius: 3.84,
-          elevation: 5,
+          elevation: 1,
         }}
         className="flex flex-row bg-white py-3 rounded-b-2xl border-b border-slate-300/30 justify-center items-center px-6 gap-3"
       >
