@@ -7,7 +7,10 @@ import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { CalendarDays, ChevronDown } from "lucide-react-native";
 import { useRef, useState } from "react";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+
 import {
+  Platform,
   Pressable,
   StatusBar,
   Text,
@@ -21,6 +24,8 @@ export default function AddTransaction() {
   const [transactionType, setTransactionType] = useState("expense");
   const [amount, setAmount] = useState("0.00");
   const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [selectedCurrency, setSelectedCurrency] = useState(
     CURRENCY_LIST.find((c) => c.code === "IDR") ?? CURRENCY_LIST[0],
   );
@@ -28,6 +33,28 @@ export default function AddTransaction() {
     WALLET_LIST.find((w) => w.bank === "BCA") ?? WALLET_LIST[0],
   );
   const [selectedCategory, setSelectedCategory] = useState("shopping");
+
+  // -- helper
+  // -- Helper to format the date nicely:
+  const formatDate = (d: Date) => {
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }); // → "06 Mar 2026"
+  };
+
+  // -- Handler:
+  const handleDateChange = (event: any, selected?: Date) => {
+    if (Platform.OS === "android") setShowDatePicker(false); // auto-close on Android
+    if (selected) setDate(selected);
+  };
+
+  // -- handlers
+  const handleConfirm = (selected: Date) => {
+    setDate(selected);
+    setShowDatePicker(false);
+  };
 
   // -- layout
   const router = useRouter();
@@ -154,15 +181,48 @@ export default function AddTransaction() {
                 <ChevronDown stroke={"#94a3b8"} size={18} />
               </Pressable>
             </View>
-            <View className="w-1/2 flex-col items-start gap-1">
+            <View
+              style={{ position: "relative" }}
+              className="w-1/2 flex-col items-start gap-1"
+            >
               <Text className="text-sm font-medium">Pick Date</Text>
-              <Pressable className="w-[90%] flex flex-row p-2 bg-white border border-slate-200 rounded-lg items-center justify-between">
-                <View className="flex flex-row gap-2">
+              <Pressable
+                onPress={() => setShowDatePicker(true)}
+                className="w-[90%] flex flex-row p-2 bg-white border border-slate-200 rounded-lg items-center justify-between"
+              >
+                <View className="flex flex-row gap-2 items-center">
                   <CalendarDays size={15} stroke={"#00bf71"} />
-                  <Text className="text-sm">Today</Text>
+                  <Text className="text-sm">{formatDate(date)}</Text>
+                  {/* ↑ replaces the hardcoded "Today" */}
                 </View>
                 <ChevronDown stroke={"#94a3b8"} size={18} />
               </Pressable>
+
+              {showDatePicker && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 40, // adjust to appear just below the pressable
+                    left: -150,
+                    zIndex: 999,
+                    backgroundColor: "white",
+                    borderRadius: 12,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  <DateTimePickerModal
+                    isVisible={showDatePicker}
+                    mode="date"
+                    date={date}
+                    onConfirm={handleConfirm}
+                    onCancel={() => setShowDatePicker(false)}
+                  />
+                </View>
+              )}
             </View>
           </View>
 
