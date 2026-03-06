@@ -27,7 +27,7 @@ export default function AddTransaction() {
   const [selectedWallet, setSelectedWallet] = useState(
     WALLET_LIST.find((w) => w.bank === "BCA") ?? WALLET_LIST[0],
   );
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("shopping");
 
   // -- layout
   const router = useRouter();
@@ -67,8 +67,8 @@ export default function AddTransaction() {
     closeWalletSheet();
   };
 
-  const handleSelectCategory = (category: any) => {
-    setSelectedCategory(category);
+  const handleSelectCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
     closeCategorySheet();
   };
 

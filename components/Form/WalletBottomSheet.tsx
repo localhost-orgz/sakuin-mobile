@@ -1,8 +1,9 @@
 import { WALLET_LIST } from "@/constants/walletList";
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import React, { forwardRef, useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import WalletItem from "./WalletItem";
 
 interface Props {
   selectedWallet: any;
@@ -11,7 +12,7 @@ interface Props {
 
 const WalletBottomSheet = forwardRef<BottomSheet, Props>(
   ({ selectedWallet, onSelect }, ref) => {
-    const snapPoints = useMemo(() => ["70%"], []);
+    const snapPoints = useMemo(() => ["50%"], []);
     const insets = useSafeAreaInsets();
 
     return (
@@ -42,18 +43,26 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
         <BottomSheetFlatList
           data={WALLET_LIST}
           keyExtractor={(item: any) => item.id}
+          stickyHeaderIndices={[0]}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 40,
           }}
+          ListHeaderComponent={
+            <View className="w-full bg-white pt-2 pb-4 px-5">
+              <View className="pb-3 border-b border-gray-200 items-center">
+                <Text className="text-center text-lg font-bold text-gray-900">
+                  Select Wallet
+                </Text>
+              </View>
+            </View>
+          }
           renderItem={({ item }: any) => {
-            const isSelected = selectedWallet.code === item.code;
             return (
-              <Pressable onPress={() => onSelect(item)}>
-                <View>
-                  <Text>Nama Wallet</Text>
-                  <View className="h-5 w-5 bg-black rounded-full"></View>
-                </View>
-              </Pressable>
+              <WalletItem
+                item={item}
+                selectedWallet={selectedWallet}
+                onSelect={onSelect}
+              />
             );
           }}
         />

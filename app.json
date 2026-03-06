@@ -26,6 +26,10 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-av",
+        { "microphonePermission": "Allow mic access for Live recording." }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
