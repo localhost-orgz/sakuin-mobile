@@ -6,7 +6,13 @@ export type WalletThemeId =
   | "ember"
   | "violet"
   | "indigo"
-  | "rose";
+  | "rose"
+  | "mint"
+  | "peach"
+  | "sky"
+  | "lavender"
+  | "blush"
+  | "sand";
 
 export type WalletColorKey =
   | "bgColor"
@@ -35,6 +41,85 @@ export interface UseWalletThemeReturn {
 }
 
 export const WALLET_THEMES: Record<WalletThemeId, WalletTheme> = {
+  // 🆕 Mint — fresh, airy, on-brand with the app's #00bf71 green
+  peach: {
+    id: "peach",
+    label: "Peach",
+    gradientColors: ["#fff7f2", "#ffe8d6"],
+    accentColor: "rgba(249, 115, 22, 0.9)",
+    bgColor: "#fff7f2",
+    shadowColor: "#f97316",
+    textColor: "#b8440a",
+    cardColor: "#f97316",
+    cardColorBack: "#c2410c",
+    iconBgColor: "#ffe8d6",
+  },
+
+  sky: {
+    id: "sky",
+    label: "Sky",
+    gradientColors: ["#f0f9ff", "#d0eeff"],
+    accentColor: "rgba(14, 165, 233, 0.9)",
+    bgColor: "#f0f9ff",
+    shadowColor: "#0ea5e9",
+    textColor: "#0369a1",
+    cardColor: "#0ea5e9",
+    cardColorBack: "#0284c7",
+    iconBgColor: "#d0eeff",
+  },
+
+  lavender: {
+    id: "lavender",
+    label: "Lavender",
+    gradientColors: ["#faf5ff", "#ead5ff"],
+    accentColor: "rgba(168, 85, 247, 0.9)",
+    bgColor: "#faf5ff",
+    shadowColor: "#a855f7",
+    textColor: "#6b21a8",
+    cardColor: "#a855f7",
+    cardColorBack: "#7e22ce",
+    iconBgColor: "#ead5ff",
+  },
+
+  blush: {
+    id: "blush",
+    label: "Blush",
+    gradientColors: ["#fff1f2", "#ffd6db"],
+    accentColor: "rgba(244, 63, 94, 0.9)",
+    bgColor: "#fff1f2",
+    shadowColor: "#f43f5e",
+    textColor: "#9f1239",
+    cardColor: "#f43f5e",
+    cardColorBack: "#be123c",
+    iconBgColor: "#ffd6db",
+  },
+
+  sand: {
+    id: "sand",
+    label: "Sand",
+    gradientColors: ["#fffbeb", "#fde68a"],
+    accentColor: "rgba(234, 179, 8, 0.9)",
+    bgColor: "#fffbeb",
+    shadowColor: "#eab308",
+    textColor: "#854d0e",
+    cardColor: "#eab308",
+    cardColorBack: "#a16207",
+    iconBgColor: "#fde68a",
+  },
+
+  mint: {
+    id: "mint",
+    label: "Mint",
+    gradientColors: ["#e8faf2", "#c6f6e0"], // very light green, almost white-green
+    accentColor: "rgba(0, 191, 113, 0.9)",
+    bgColor: "#f0fdf8",
+    shadowColor: "#00bf71",
+    textColor: "#00845f",
+    cardColor: "#00bf71", // brand green for the card face
+    cardColorBack: "#009958", // slightly deeper for the back layer
+    iconBgColor: "#d1fae5",
+  },
+
   ocean: {
     id: "ocean",
     label: "Ocean",

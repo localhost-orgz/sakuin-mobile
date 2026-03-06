@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
 import CurrentGoals from "@/components/Home/CurrentGoals";
 import RecentTransactions from "@/components/Home/RecentTransactions";
@@ -8,6 +8,7 @@ import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import { RECENT_TRANSACTIONS } from "@/constants/transactionList";
+import { Link } from "expo-router";
 
 export default function Home() {
   return (
@@ -29,6 +30,11 @@ export default function Home() {
 
           {/* recent transactions */}
           <RecentTransactions transactions={RECENT_TRANSACTIONS} />
+          <Link href={"/(others)/addForm"}>
+            <View className="p-3 bg-sky-500 rounded">
+              <Text>Add form</Text>
+            </View>
+          </Link>
         </View>
       </ScrollView>
     </>

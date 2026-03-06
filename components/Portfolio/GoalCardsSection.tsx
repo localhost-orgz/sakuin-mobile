@@ -7,7 +7,7 @@ const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow }: any) => {
   return (
     <>
       <View className="flex-1 mt-5">
-        <Text className="text-3xl px-[20] font-bold">Goals</Text>
+        <Text className="text-3xl px-[20] font-bold mb-3">Goals</Text>
       </View>
       <View className="flex-row flex-wrap px-5 mt-3 justify-between">
         {/* Item Wallet */}

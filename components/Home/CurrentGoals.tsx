@@ -9,8 +9,6 @@ interface GoalItem {
   icon: string;
   current: number;
   target: number;
-  bgColor: string;
-  accentColor: string;
 }
 
 interface CurrentGoalsProps {

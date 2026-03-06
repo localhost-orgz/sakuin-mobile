@@ -27,7 +27,7 @@ const CardGoals = ({ goal }: any) => {
         shadowOpacity: 0.12,
         shadowRadius: 14,
         elevation: 4,
-        gap: 12,
+        gap: 15,
       }}
     >
       {/* Icon + Name */}
@@ -40,21 +40,21 @@ const CardGoals = ({ goal }: any) => {
       >
         <View
           style={{
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             borderRadius: 7,
             backgroundColor: theme.bgColor,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 20 }}>{goal.icon}</Text>
+          <Text style={{ fontSize: 16 }}>{goal.icon}</Text>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, gap: 3 }}>
           <Text
             style={{
-              fontSize: 15,
-              fontWeight: "700",
+              fontSize: 16,
+              fontWeight: "600",
               color: "#1a1f36",
             }}
             numberOfLines={1}
@@ -63,7 +63,7 @@ const CardGoals = ({ goal }: any) => {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              fontSize: 10,
               color: "#9ca3af",
               marginTop: 1,
             }}
@@ -74,7 +74,7 @@ const CardGoals = ({ goal }: any) => {
       </View>
 
       {/* Balances */}
-      <View style={{ gap: 3 }}>
+      <View style={{ gap: 3, marginBottom: -5 }}>
         <View
           style={{
             flexDirection: "row",
@@ -83,7 +83,7 @@ const CardGoals = ({ goal }: any) => {
         >
           <Text
             style={{
-              fontSize: 10,
+              fontSize: 9,
               color: "#9ca3af",
               fontWeight: "600",
               textTransform: "uppercase",
@@ -94,7 +94,7 @@ const CardGoals = ({ goal }: any) => {
           </Text>
           <Text
             style={{
-              fontSize: 10,
+              fontSize: 9,
               color: "#9ca3af",
               fontWeight: "600",
               textTransform: "uppercase",
@@ -136,7 +136,7 @@ const CardGoals = ({ goal }: any) => {
       <View>
         <View
           style={{
-            height: 7,
+            height: 5,
             backgroundColor: "#f3f4f6",
             borderRadius: 999,
             overflow: "hidden",

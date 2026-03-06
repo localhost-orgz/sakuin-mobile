@@ -4,8 +4,9 @@ import TotalBalance from "@/components/Portfolio/TotalBalance";
 import WalletCardsSection from "@/components/Portfolio/WalletCardsSection";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { WALLET_LIST } from "@/constants/walletList";
+import { Link } from "expo-router";
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Profile() {
@@ -37,6 +38,9 @@ export default function Profile() {
           goals={CURRENT_GOALS}
         />
       </View>
+      <Link href={"/(auth)/welcome"}>
+        <Text>Halo</Text>
+      </Link>
     </ScrollView>
   );
 }

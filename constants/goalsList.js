@@ -5,8 +5,6 @@ export const CURRENT_GOALS = [
     icon: "💻",
     current: 8500000,
     target: 25000000,
-    bgColor: "#EEF2FF",
-    accentColor: "#6366f1",
     themeId: "indigo",
   },
   {
@@ -15,8 +13,6 @@ export const CURRENT_GOALS = [
     icon: "🏖️",
     current: 3200000,
     target: 5000000,
-    bgColor: "#FFF4E5",
-    accentColor: "#f97316",
     themeId: "ember",
   },
   {
@@ -25,8 +21,6 @@ export const CURRENT_GOALS = [
     icon: "🛡️",
     current: 12000000,
     target: 12000000,
-    bgColor: "#F0FDF4",
-    accentColor: "#00BC7D",
     themeId: "forest",
   },
   {
@@ -35,8 +29,6 @@ export const CURRENT_GOALS = [
     icon: "📷",
     current: 1800000,
     target: 7500000,
-    bgColor: "#FDF4FF",
-    accentColor: "#a855f7",
     themeId: "violet",
   },
   {
@@ -45,8 +37,6 @@ export const CURRENT_GOALS = [
     icon: "💍",
     current: 22000000,
     target: 50000000,
-    bgColor: "#FFF1F2",
-    accentColor: "#f43f5e",
     themeId: "rose",
   },
   {
@@ -55,8 +45,6 @@ export const CURRENT_GOALS = [
     icon: "👕",
     current: 150000,
     target: 600000,
-    bgColor: "#FFF1F2",
-    accentColor: "#f43f5e",
     themeId: "ocean",
   },
 ];

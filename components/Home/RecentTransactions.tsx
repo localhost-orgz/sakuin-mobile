@@ -35,10 +35,10 @@ const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
           shadowRadius: 3.84,
           elevation: 5,
         }}
-        className="flex flex-row bg-white py-3 mt-2 rounded-t-2xl border-b border-slate-300/30 justify-between items-center px-6"
+        className="flex flex-row bg-white py-2 mt-2 rounded-t-2xl border-b border-slate-300/30 justify-between items-center px-6"
       >
-        <Text className="text-md text-[#9ca3af]">Name</Text>
-        <Text className="text-md text-[#9ca3af]">Amount</Text>
+        <Text className="text-sm text-[#9ca3af]">Name</Text>
+        <Text className="text-sm text-[#9ca3af]">Amount</Text>
       </View>
 
       {/* list */}
@@ -58,10 +58,10 @@ const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
           shadowRadius: 3.84,
           elevation: 1,
         }}
-        className="flex flex-row bg-white py-3 rounded-b-2xl border-b border-slate-300/30 justify-center items-center px-6 gap-3"
+        className="flex flex-row bg-white py-2.5 rounded-b-2xl border-b border-slate-300/30 justify-center items-center px-6 gap-1"
       >
-        <Text className="text-md text-[#9ca3af]">Other Transactions</Text>
-        <ChevronsRight color={"#9ca3af"} size={18} />
+        <Text className="text-sm text-[#9ca3af]">Other Transactions</Text>
+        <ChevronsRight color={"#9ca3af"} size={15} style={{ marginTop: 1 }} />
       </View>
     </View>
   );

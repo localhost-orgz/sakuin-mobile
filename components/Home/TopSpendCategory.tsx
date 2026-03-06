@@ -23,20 +23,20 @@ const TopSpendCategory = ({ TopCategories }: any) => {
           >
             <View
               style={{
-                width: 60,
-                height: 60,
-                borderRadius: 18,
+                width: 50,
+                height: 50,
+                borderRadius: 11,
                 backgroundColor: item.bgColor,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 26 }}>{item.icon}</Text>
+              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
             </View>
 
             <Text
               style={{
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: "600",
                 color: "#6b7280",
                 textAlign: "center",
