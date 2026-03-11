@@ -35,7 +35,7 @@ export default function Home() {
               <Text>Add form</Text>
             </View>
           </Link>
-          <Link href={"/(others)/Halo"}>
+          <Link href={"/(others)/transferForm"}>
             <View className="p-3 bg-sky-500 rounded">
               <Text>Halo page</Text>
             </View>
