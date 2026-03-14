@@ -40,11 +40,6 @@ export default function Home() {
               <Text>Halo page</Text>
             </View>
           </Link>
-          <Link href={"/(others)/sakuSnap"}>
-            <View className="p-3 bg-sky-500 rounded">
-              <Text>sakuSnap</Text>
-            </View>
-          </Link>
         </View>
       </ScrollView>
     </>
