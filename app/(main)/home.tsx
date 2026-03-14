@@ -35,7 +35,12 @@ export default function Home() {
               <Text>Add form</Text>
             </View>
           </Link>
-          <Link href={"/(others)/transferForm"}>
+          <Link href={"/(others)/sakuVoice"}>
+            <View className="p-3 bg-sky-500 rounded">
+              <Text>Halo page</Text>
+            </View>
+          </Link>
+          <Link href={"/(auth)/welcome"}>
             <View className="p-3 bg-sky-500 rounded">
               <Text>Halo page</Text>
             </View>

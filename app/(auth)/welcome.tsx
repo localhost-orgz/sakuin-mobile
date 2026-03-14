@@ -1,73 +1,230 @@
-import React from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  SafeAreaView,
-  StyleSheet,
+  Dimensions,
+  FlatList,
+  Image,
+  Pressable,
+  StatusBar,
   Text,
-  TouchableOpacity,
   View,
+  ViewToken,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const App = () => {
-  const data = ["Faza Mumtaz Ramadhan", "J0403241117"];
+const { width: SW } = Dimensions.get("window");
 
+// ─── Onboarding data ──────────────────────────────────────────────────────────
+const SLIDES = [
+  {
+    id: "1",
+    title: "Catat Manual dalam Sekejap",
+    description:
+      "Kontrol penuh atas setiap pengeluaranmu. Masukkan detail transaksi dengan navigasi yang simpel dan intuitif.",
+    image: require("../../assets/images/onboarding-image1.png"),
+    height: 240,
+    width: 240,
+  },
+  {
+    id: "2",
+    title: "Foto Struk & Split Bill",
+    description:
+      "Gak perlu hitung manual lagi! Foto struk belanjaanmu, biarkan AI mencatatnya, dan bagi tagihan dengan teman secara otomatis.",
+    image: require("../../assets/images/onboarding-image2.png"),
+    height: 230,
+    width: 230,
+  },
+  {
+    id: "3",
+    title: "Tinggal Ngomong Saja",
+    description:
+      'Sedang di jalan? Gunakan perintah suara untuk mencatat transaksi. "Makan siang 50 ribu", semudah bicara dengan teman.',
+    image: require("../../assets/images/onboarding-image3.png"),
+    height: 190,
+    width: 190,
+  },
+  {
+    id: "4",
+    title: "Import Bukti Transfer Instan",
+    description:
+      "Langsung bagikan bukti transfer dari m-banking ke Sakuin. Transaksi otomatis tercatat tanpa perlu input ulang satu per satu.",
+    image: require("../../assets/images/onboarding-image4.png"),
+    height: 200,
+    width: 250,
+  },
+];
+
+// ─── Dot indicator ────────────────────────────────────────────────────────────
+const Dots = ({
+  count,
+  activeIndex,
+}: {
+  count: number;
+  activeIndex: number;
+}) => (
+  <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <View
+        key={i}
+        style={{
+          height: 8,
+          width: i === activeIndex ? 16 : 8,
+          borderRadius: 4,
+          backgroundColor: i === activeIndex ? "#00bf71" : "#c7f0dc",
+        }}
+      />
+    ))}
+  </View>
+);
+
+// ─── Slide item ───────────────────────────────────────────────────────────────
+const SlideItem = ({ item }: { item: (typeof SLIDES)[0] }) => {
   return (
-    <SafeAreaView style={styles.container}>
-      {/* List Baris Oranye */}
-      <View style={styles.listContainer}>
-        {data.map((item, index) => (
-          <View key={index} style={styles.row}>
-            <Text style={styles.text}>{item}</Text>
-          </View>
-        ))}
-      </View>
+    <View
+      style={{
+        width: SW,
+        alignItems: "center",
+        paddingHorizontal: 32,
+        flex: 1,
+        justifyContent: "center",
+        gap: 36,
+      }}
+    >
+      {/* Image */}
+      <Image
+        source={item.image}
+        style={{
+          width: item.width,
+          height: item.height,
+          resizeMode: "contain",
+        }}
+      />
 
-      {/* Floating Action Button (FAB) */}
-      <TouchableOpacity style={styles.fab}>
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+      {/* Text */}
+      <View className="items-center gap-3">
+        <Text className="text-2xl font-bold text-[#1a1f36] text-center tracking-tighter">
+          {item.title}
+        </Text>
+        <Text className="text-base text-[#6b7280] text-center leading-6">
+          {item.description}
+        </Text>
+      </View>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF", // Background putih bersih ⚪
-  },
-  listContainer: {
-    marginTop: 10,
-  },
-  row: {
-    backgroundColor: "#FFC34D", // Warna oranye sesuai gambar 🟠
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginBottom: 5, // Jarak antar baris putih tipis
-  },
-  text: {
-    fontSize: 18,
-    color: "#333",
-    fontWeight: "400",
-  },
-  fab: {
-    position: "absolute",
-    width: 60,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    right: 20,
-    bottom: 30,
-    backgroundColor: "#E6E0F8", // Warna ungu muda FAB 💜
-    borderRadius: 15,
-    elevation: 8, // Shadow buat Android 🤖
-    shadowColor: "#000", // Shadow buat iOS 🍎
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-  },
-  fabIcon: {
-    fontSize: 30,
-    color: "#1D1B20",
-  },
-});
+// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
+export default function OnboardingScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-export default App;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0) {
+        setActiveIndex(viewableItems[0].index ?? 0);
+      }
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({
+    viewAreaCoveragePercentThreshold: 50,
+  }).current;
+
+  const handleNext = () => {
+    if (activeIndex < SLIDES.length - 1) {
+      flatListRef.current?.scrollToIndex({
+        index: activeIndex + 1,
+        animated: true,
+      });
+    } else {
+      router.replace("/(auth)/auth");
+    }
+  };
+
+  const handleSkip = () => {
+    router.replace("/(auth)/sign-in");
+  };
+
+  const isLast = activeIndex === SLIDES.length - 1;
+
+  return (
+    <View style={{ flex: 1, justifyContent: "space-between" }}>
+      <StatusBar barStyle="dark-content" />
+
+      {/* Full-screen top-to-bottom gradient background */}
+      <LinearGradient
+        colors={["#d4f5e6", "#edfaf3", "#ffffff"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        locations={[0, 0.45, 1]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+
+      {/* Skip button */}
+      <View
+        style={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 24,
+          alignItems: "flex-end",
+        }}
+      >
+        {!isLast ? (
+          <Pressable
+            onPress={handleSkip}
+            style={({ pressed }) => ({
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+              backgroundColor: pressed ? "rgba(0,191,113,0.1)" : "transparent",
+            })}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "#00bf71" }}>
+              Skip
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={{ height: 36 }} />
+        )}
+      </View>
+
+      {/* Slides */}
+      <FlatList
+        ref={flatListRef}
+        data={SLIDES}
+        keyExtractor={(item) => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        renderItem={({ item }) => <SlideItem item={item} />}
+        style={{ flex: 1 }}
+      />
+
+      {/* Bottom section */}
+      <View
+        style={{
+          paddingHorizontal: 28,
+          paddingBottom: insets.bottom,
+          gap: 24,
+          alignItems: "center",
+        }}
+      >
+        <Dots count={SLIDES.length} activeIndex={activeIndex} />
+
+        <Pressable
+          className={`w-full py-4 bg-[#00bf71] flex items-center justify-center rounded-full`}
+          onPress={handleNext}
+        >
+          <Text className="font-medium text-white text-base">
+            {!isLast ? "Next" : "Get started 🚀"}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
