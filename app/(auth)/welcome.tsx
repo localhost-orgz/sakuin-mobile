@@ -145,7 +145,7 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = () => {
-    router.replace("/(auth)/sign-in");
+    router.replace("/(auth)/auth");
   };
 
   const isLast = activeIndex === SLIDES.length - 1;

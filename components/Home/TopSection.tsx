@@ -1,3 +1,12 @@
+/**
+ * components/Home/TopSection.tsx
+ *
+ * Greeting row is pinned (not in scroll).
+ * Wallet carousel + dots + IncomeExpenseCard live inside the parent ScrollView
+ * as a ListHeader, so they scroll along with all other content.
+ */
+
+import { WALLET_LIST } from "@/constants/walletList";
 import { useRef, useState } from "react";
 import {
   Dimensions,
@@ -8,18 +17,88 @@ import {
   View,
   ViewToken,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import IncomeExpenseCard from "./IncomeExpenseCard";
 import WalletCard from "./WalletCard";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
 
-import { WALLET_LIST } from "../../constants/walletList";
-import IncomeExpenseCard from "./IncomeExpenseCard";
+// ─── PinnedGreeting ───────────────────────────────────────────────────────────
+// Exported separately so home.tsx can render it above the ScrollView.
+export const PinnedGreeting = () => {
+  const insets = useSafeAreaInsets();
 
-const TopSection = () => {
+  return (
+    <View
+      style={{
+        backgroundColor: "#00bf71",
+        paddingTop: insets.top + 12,
+        paddingBottom: 14,
+        paddingHorizontal: 20,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View style={{ gap: 2 }}>
+          <Text
+            style={{
+              fontSize: 24,
+              color: "white",
+              fontWeight: "800",
+              letterSpacing: -0.3,
+            }}
+          >
+            Hi, User
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: "rgba(255,255,255,0.55)",
+              fontWeight: "500",
+            }}
+          >
+            welcome back
+          </Text>
+        </View>
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: "black",
+            overflow: "hidden",
+            borderWidth: 2,
+            borderColor: "rgba(255,255,255,0.3)",
+          }}
+        >
+          <Image
+            source={require("../../assets/images/profile.jpg")}
+            style={{ width: "100%", height: "100%", borderRadius: 21 }}
+            resizeMode="cover"
+          />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ─── ScrollableTopContent ─────────────────────────────────────────────────────
+// Wallet carousel + dots + income/expense card.
+// Rendered as ListHeaderComponent inside home.tsx's FlatList/SectionList.
+export const ScrollableTopContent = ({
+  isBalanceShow,
+  setIsBalanceShow,
+}: {
+  isBalanceShow: boolean;
+  setIsBalanceShow: (v: boolean) => void;
+}) => {
   const flatListRef = useRef<FlatList>(null);
-  const [isBalanceShow, setIsBalanceShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const onViewableItemsChanged = useRef(
@@ -35,77 +114,77 @@ const TopSection = () => {
   }).current;
 
   return (
-    <View className="w-full h-[390px] pt-5 bg-[#00bf71] absolute top-0 left-0">
-      <SafeAreaView>
-        {/* User info */}
-        <View className="flex flex-row items-center justify-between px-5">
-          <View className="flex gap-0.5">
-            <Text className="text-[24px] text-white font-bold">Hi, User</Text>
-            <Text className="text-[16px] text-white/50">welcome back</Text>
-          </View>
-          <View className="h-[40px] w-[40px] rounded-full bg-black">
-            <Image
-              source={require("../../assets/images/profile.jpg")}
-              className="w-full h-full rounded-full aspect-square object-center object-cover "
-            />
-          </View>
-        </View>
-
-        {/* card carousel */}
-        <View className="mt-5">
-          <FlatList
-            ref={flatListRef}
-            data={WALLET_LIST}
-            keyExtractor={(item) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={CARD_WIDTH + 16} // card width + gap
-            snapToAlignment="start"
-            decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            renderItem={({ item }) => (
-              <WalletCard
-                item={item}
-                isBalanceShow={isBalanceShow}
-                onBalanceShow={setIsBalanceShow}
-              />
-            )}
+    <View
+      style={{ backgroundColor: "#00bf71", paddingTop: 16, paddingBottom: 40 }}
+    >
+      {/* Wallet carousel */}
+      <FlatList
+        ref={flatListRef}
+        data={WALLET_LIST}
+        keyExtractor={(item) => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_WIDTH + 16}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        renderItem={({ item }) => (
+          <WalletCard
+            item={item}
+            isBalanceShow={isBalanceShow}
+            onBalanceShow={setIsBalanceShow}
           />
+        )}
+      />
 
-          {/* dot indicators */}
-          <View className="flex flex-row justify-center gap-1.5 mt-4">
-            {WALLET_LIST.map((_, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  flatListRef.current?.scrollToIndex({
-                    index,
-                    animated: true,
-                  });
-                }}
-              >
-                <View
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor:
-                      activeIndex === index ? "white" : "rgba(255,255,255,0.3)",
-                  }}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+      {/* Dot indicators */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          gap: 6,
+          marginTop: 14,
+        }}
+      >
+        {WALLET_LIST.map((_, index) => (
+          <TouchableOpacity
+            key={index}
+            onPress={() => {
+              flatListRef.current?.scrollToIndex({ index, animated: true });
+            }}
+          >
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor:
+                  activeIndex === index ? "white" : "rgba(255,255,255,0.3)",
+              }}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {/* income expense */}
-        <IncomeExpenseCard isBalanceShow={isBalanceShow} />
-      </SafeAreaView>
+      {/* Income / Expense card — floats below */}
+      <IncomeExpenseCard isBalanceShow={isBalanceShow} />
     </View>
   );
 };
 
-export default TopSection;
+// ─── Default export (kept for backward compat if anything imports TopSection) ─
+export default function TopSection() {
+  const [isBalanceShow, setIsBalanceShow] = useState(false);
+  return (
+    <>
+      <PinnedGreeting />
+      <ScrollableTopContent
+        isBalanceShow={isBalanceShow}
+        setIsBalanceShow={setIsBalanceShow}
+      />
+    </>
+  );
+}

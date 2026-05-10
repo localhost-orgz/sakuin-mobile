@@ -1,26 +1,20 @@
-/**
- * app/(others)/detailWallet.tsx
- *
- * Wallet Detail Screen — shows balance, quick actions, and transaction history.
- * Usage: router.push({ pathname: "/(others)/detailWallet", params: { walletId: wallet.id } })
- */
-
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeftRight,
   ChevronLeft,
-  Eye,
-  EyeOff,
+  Ellipsis,
   MoveUpRight,
   Plus,
   Search,
   TrendingDown,
   TrendingUp,
+  WalletMinimal,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  Pressable,
+  RefreshControl,
   SectionList,
   StatusBar,
   Text,
@@ -30,7 +24,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// ─── Mock wallet data (replace with your store/constants) ────────────────────
 const MOCK_WALLETS = [
   {
     id: "w1",
@@ -38,7 +31,7 @@ const MOCK_WALLETS = [
     type: "Tabungan",
     balance: "1.500.000",
     transactions: "850.000",
-    themeId: "blue",
+    themeId: "lavender",
     accountNumber: "•••• •••• 4821",
   },
   {
@@ -61,7 +54,6 @@ const MOCK_WALLETS = [
   },
 ];
 
-// ─── Mock transactions per wallet ────────────────────────────────────────────
 type TxItem = {
   id: string;
   title: string;
@@ -184,7 +176,6 @@ const MOCK_TRANSACTIONS: Record<string, TxItem[]> = {
   ],
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatRupiah = (n: number) =>
   "Rp" + new Intl.NumberFormat("id-ID").format(n);
 
@@ -209,7 +200,6 @@ const groupByDate = (txs: TxItem[]) => {
     .map(([date, data]) => ({ title: formatDate(date), data }));
 };
 
-// ─── Transaction Item ─────────────────────────────────────────────────────────
 const TransactionItem = ({ item }: { item: TxItem }) => {
   const isIn = item.type === "in";
   return (
@@ -224,7 +214,6 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
         backgroundColor: "white",
       }}
     >
-      {/* Icon */}
       <View
         style={{
           width: 44,
@@ -243,7 +232,6 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
         )}
       </View>
 
-      {/* Text */}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1f36" }}>
           {item.title}
@@ -253,7 +241,6 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
         </Text>
       </View>
 
-      {/* Amount */}
       <View style={{ alignItems: "flex-end" }}>
         <Text
           style={{
@@ -270,7 +257,6 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
   );
 };
 
-// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function DetailWallet() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -282,13 +268,15 @@ export default function DetailWallet() {
 
   const [search, setSearch] = useState("");
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1500);
+  }, []);
 
   const { theme } = useWalletTheme(wallet.themeId as WalletThemeId);
 
-  const balanceNum = parseBalance(wallet.balance);
-  const transactionsNum = parseBalance(wallet.transactions);
-
-  // Totals for income / expense chips
   const totalIn = allTransactions
     .filter((t) => t.type === "in")
     .reduce((s, t) => s + t.amount, 0);
@@ -296,7 +284,6 @@ export default function DetailWallet() {
     .filter((t) => t.type === "out")
     .reduce((s, t) => s + t.amount, 0);
 
-  // Filtered + grouped
   const filtered = useMemo(() => {
     if (!search.trim()) return allTransactions;
     const q = search.toLowerCase();
@@ -309,7 +296,6 @@ export default function DetailWallet() {
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
 
-  // isDark check for text contrast
   const isDark =
     theme.gradientColors[0].startsWith("#0") ||
     theme.gradientColors[0].startsWith("#1") ||
@@ -317,62 +303,251 @@ export default function DetailWallet() {
     theme.gradientColors[0].startsWith("#3");
 
   const textPrimary = isDark ? "white" : theme.textColor;
-  const textMuted = isDark ? "rgba(255,255,255,0.55)" : `${theme.textColor}88`;
-  const iconBg = isDark ? "rgba(255,255,255,0.18)" : `${theme.textColor}18`;
+  const textMuted = isDark ? "rgba(255,255,255,0.35)" : `${theme.textColor}88`;
+  const iconBg = isDark ? "rgba(255,255,255,0.10)" : `${theme.textColor}18`;
+
+  // Blob color — on dark cards use white blobs, on light cards use the accent color
+  const blobColor = isDark
+    ? "rgba(255,255,255,0.07)"
+    : `${theme.shadowColor}22`;
+  const blobColorStrong = isDark
+    ? "rgba(255,255,255,0.11)"
+    : `${theme.shadowColor}38`;
+
+  const ListHeader = (
+    <>
+      <View
+        style={{
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+          overflow: "hidden",
+          backgroundColor: theme.accentColor,
+        }}
+      >
+        {/* Wallet icon + name */}
+        <View style={{ alignItems: "center", gap: 6, paddingTop: 20 }}>
+          <View
+            style={{
+              width: 65,
+              height: 65,
+              borderRadius: 36,
+              backgroundColor: theme.cardColor,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 2,
+            }}
+          >
+            <Text style={{ fontSize: 26, fontWeight: "800", color: "white" }}>
+              <WalletMinimal strokeWidth={2.5} color="white" />
+            </Text>
+          </View>
+
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: "700",
+              color: "white",
+              letterSpacing: -0.4,
+            }}
+          >
+            {wallet.bank}
+          </Text>
+
+          {/* Balance */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 6,
+            }}
+          >
+            <View className="flex flex-row items-end gap-1">
+              <Text className="text-white text-lg font-semibold mb-0.5">
+                Rp
+              </Text>
+              <Text
+                style={{
+                  fontSize: 30,
+                  fontWeight: "800",
+                  color: "white",
+                  letterSpacing: -0.5,
+                }}
+              >
+                {isBalanceVisible ? `${wallet.balance}` : "Rp •••••••••"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Income / Expense summary chips */}
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 20,
+              }}
+            >
+              <TrendingUp size={13} color="white" strokeWidth={2.5} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "white" }}>
+                {formatRupiah(totalIn)}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 20,
+              }}
+            >
+              <TrendingDown size={13} color="white" strokeWidth={2.5} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "white" }}>
+                {formatRupiah(totalOut)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Action buttons */}
+      <View
+        style={{
+          marginHorizontal: 20,
+          marginTop: -20,
+          backgroundColor: "white",
+          borderRadius: 20,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          flexDirection: "row",
+          justifyContent: "space-around",
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        }}
+      >
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={{ flex: 1, alignItems: "center", gap: 8 }}
+        >
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: theme.bgColor ?? "#f0fdf8",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Plus
+              size={22}
+              color={theme.accentColor ?? "#00bf71"}
+              strokeWidth={2.5}
+            />
+          </View>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: "#374151",
+              textAlign: "center",
+            }}
+          >
+            Tambah{"\n"}Uang
+          </Text>
+        </TouchableOpacity>
+
+        <View style={{ width: 1, backgroundColor: "#f3f4f6" }} />
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={{ flex: 1, alignItems: "center", gap: 8 }}
+        >
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: theme.bgColor ?? "#f0fdf8",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowLeftRight
+              size={20}
+              color={theme.accentColor ?? "#00bf71"}
+              strokeWidth={2.5}
+            />
+          </View>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: "#374151",
+              textAlign: "center",
+            }}
+          >
+            Pindahkan{"\n"}Uang
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
+      <View
+        style={{
+          marginHorizontal: 20,
+          marginTop: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: "white",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 11,
+          borderWidth: 1.5,
+          borderColor: "#e5e7eb",
+          gap: 10,
+        }}
+      >
+        <Search size={16} color="#9ca3af" strokeWidth={2} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Cari Transaksi"
+          placeholderTextColor="#9ca3af"
+          style={{ flex: 1, fontSize: 14, color: "#1a1f36" }}
+        />
+      </View>
+    </>
+  );
 
   return (
     <>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
-        {/* ── HEADER GRADIENT ───────────────────────────────────────────── */}
-        <LinearGradient
-          colors={theme.gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        {/* ── PINNED TOP BAR (back button + title only) ─────────────────── */}
+        <View
           style={{
             paddingTop: insets.top + 12,
-            paddingBottom: 40,
+            paddingBottom: 12,
             paddingHorizontal: 20,
-            overflow: "hidden",
+            backgroundColor: theme.accentColor,
           }}
         >
-          {/* Blobs */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              width: 160,
-              height: 160,
-              borderRadius: 80,
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.07)"
-                : `${theme.shadowColor}22`,
-              bottom: -50,
-              right: -30,
-            }}
-          />
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.05)"
-                : `${theme.shadowColor}14`,
-              top: 20,
-              right: 60,
-            }}
-          />
-
-          {/* Back + title row */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 28,
             }}
           >
             <TouchableOpacity
@@ -391,239 +566,31 @@ export default function DetailWallet() {
             <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>
               Wallet Detail
             </Text>
-            <View style={{ width: 36 }} />
+            <Pressable>
+              <Ellipsis color={"white"} />
+            </Pressable>
           </View>
-
-          {/* Wallet icon + name */}
-          <View style={{ alignItems: "center", gap: 6 }}>
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: "rgba(255,255,255,0.22)",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 2,
-              }}
-            >
-              <Text style={{ fontSize: 30, fontWeight: "800", color: "white" }}>
-                {wallet.bank.slice(0, 1)}
-              </Text>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "800",
-                color: "white",
-                letterSpacing: -0.4,
-              }}
-            >
-              {wallet.bank}
-            </Text>
-            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-              {wallet.type} · {wallet.accountNumber}
-            </Text>
-
-            {/* Balance */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                marginTop: 6,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 30,
-                  fontWeight: "800",
-                  color: "white",
-                  letterSpacing: -0.5,
-                }}
-              >
-                {isBalanceVisible ? `Rp${wallet.balance}` : "Rp •••••••••"}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setIsBalanceVisible((v) => !v)}
-                style={{
-                  padding: 6,
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  borderRadius: 20,
-                }}
-              >
-                {isBalanceVisible ? (
-                  <Eye size={16} color="white" strokeWidth={2} />
-                ) : (
-                  <EyeOff size={16} color="white" strokeWidth={2} />
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Income / Expense summary chips */}
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  paddingHorizontal: 12,
-                  paddingVertical: 7,
-                  borderRadius: 20,
-                }}
-              >
-                <TrendingUp size={13} color="white" strokeWidth={2.5} />
-                <Text
-                  style={{ fontSize: 12, fontWeight: "700", color: "white" }}
-                >
-                  {formatRupiah(totalIn)}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  paddingHorizontal: 12,
-                  paddingVertical: 7,
-                  borderRadius: 20,
-                }}
-              >
-                <TrendingDown size={13} color="white" strokeWidth={2.5} />
-                <Text
-                  style={{ fontSize: 12, fontWeight: "700", color: "white" }}
-                >
-                  {formatRupiah(totalOut)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* ── ACTION BUTTONS ────────────────────────────────────────────── */}
-        <View
-          style={{
-            marginHorizontal: 20,
-            marginTop: -20,
-            backgroundColor: "white",
-            borderRadius: 20,
-            paddingVertical: 16,
-            paddingHorizontal: 20,
-            flexDirection: "row",
-            justifyContent: "space-around",
-            shadowColor: "#000",
-            shadowOpacity: 0.08,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 6,
-          }}
-        >
-          {/* Tambah Uang */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={{ flex: 1, alignItems: "center", gap: 8 }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: theme.bgColor ?? "#f0fdf8",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Plus
-                size={22}
-                color={theme.accentColor ?? "#00bf71"}
-                strokeWidth={2.5}
-              />
-            </View>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "600",
-                color: "#374151",
-                textAlign: "center",
-              }}
-            >
-              Tambah{"\n"}Uang
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={{ width: 1, backgroundColor: "#f3f4f6" }} />
-
-          {/* Pindahkan Uang */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={{ flex: 1, alignItems: "center", gap: 8 }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: theme.bgColor ?? "#f0fdf8",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ArrowLeftRight
-                size={20}
-                color={theme.accentColor ?? "#00bf71"}
-                strokeWidth={2.5}
-              />
-            </View>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "600",
-                color: "#374151",
-                textAlign: "center",
-              }}
-            >
-              Pindahkan{"\n"}Uang
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* ── SEARCH ────────────────────────────────────────────────────── */}
-        <View
-          style={{
-            marginHorizontal: 20,
-            marginTop: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "white",
-            borderRadius: 12,
-            paddingHorizontal: 14,
-            paddingVertical: 11,
-            borderWidth: 1.5,
-            borderColor: "#e5e7eb",
-            gap: 10,
-          }}
-        >
-          <Search size={16} color="#9ca3af" strokeWidth={2} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Cari Transaksi"
-            placeholderTextColor="#9ca3af"
-            style={{ flex: 1, fontSize: 14, color: "#1a1f36" }}
-          />
-        </View>
-
-        {/* ── TRANSACTION LIST ──────────────────────────────────────────── */}
+        {/* ── SCROLLABLE CONTENT (wallet card + actions + search + list) ── */}
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
-          style={{ marginTop: 14 }}
+          style={{ backgroundColor: theme.gradientColors[0] }}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 110,
+            backgroundColor: "#f5f6fa",
+          }}
+          ListHeaderComponent={ListHeader}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="white"
+              colors={["white"]}
+            />
+          }
           ListEmptyComponent={
             <View style={{ alignItems: "center", paddingTop: 40 }}>
               <Text style={{ fontSize: 14, color: "#9ca3af" }}>
@@ -639,6 +606,7 @@ export default function DetailWallet() {
                 backgroundColor: "#f5f6fa",
                 paddingHorizontal: 20,
                 paddingVertical: 8,
+                marginTop: 14,
               }}
             >
               <Text
