@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { AlertCircle } from "lucide-react-native";
 import React from "react";
@@ -6,11 +7,18 @@ import { Modal, Text, TouchableOpacity, View } from "react-native";
 const LogoutModal = ({ isModalOpen, onModalOpen }: any) => {
   const router = useRouter();
 
-  const handleLogout = () => {
-    onModalOpen(false);
-    router.replace("/(auth)/auth");
-    // Tambahin logika navigasi atau clear session di sini 💡
+  const handleLogout = async () => {
+    // try {
+    //   await SecureStore.deleteItemAsync("user_token");
+    //   router.replace("/(auth)/auth");
+    //   onModalOpen(false);
+    // } catch (error) {
+    //   console.error("Gagal Logout:", error);
+    // }
+      router.replace("/(auth)/auth");
+      onModalOpen(false);
   };
+
   return (
     <Modal
       visible={isModalOpen}

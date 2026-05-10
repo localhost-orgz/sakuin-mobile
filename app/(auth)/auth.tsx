@@ -1,3 +1,6 @@
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -42,6 +45,27 @@ export default function SignIn() {
   const router = useRouter();
 
   const handleGoogleLogin = async () => {
+    // try {
+    //   const authUrl = "http://192.168.3.106:3000/auth/google";
+
+    //   const result = await WebBrowser.openAuthSessionAsync(
+    //     authUrl,
+    //     Linking.createURL("/")
+    //   );
+
+    //   if (result.type === "success" && result.url) {
+    //     const url = result.url;
+    //     const token = url.split("token=")[1];
+
+    //     if (token) {
+    //       await SecureStore.setItemAsync("user_token", token);
+    //       console.log("Token berhasil disimpan:", token);
+    //       router.replace("/(main)/home");
+    //     }
+    //   }
+    // } catch (error) {
+    //   console.error("Login Error:", error);
+    // }
     router.replace("/(main)/home");
   };
 
