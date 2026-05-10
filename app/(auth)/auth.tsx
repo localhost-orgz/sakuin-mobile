@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Image, Pressable, Text, View } from "react-native";
 
@@ -38,6 +39,12 @@ function AnimatedBubble({
 }
 
 export default function SignIn() {
+  const router = useRouter();
+
+  const handleGoogleLogin = async () => {
+    router.replace("/(main)/home");
+  };
+
   return (
     <>
       <LinearGradient
@@ -80,7 +87,7 @@ export default function SignIn() {
         <AnimatedBubble delay={420}>
           <View className="items-center gap-3">
             <Text className="text-xl font-bold">Ready to dive in?</Text>
-            <Pressable className="w-full">
+            <Pressable className="w-full" onPress={handleGoogleLogin}>
               {({ pressed }) => (
                 <View
                   className={`

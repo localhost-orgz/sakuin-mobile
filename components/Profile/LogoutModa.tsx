@@ -1,11 +1,14 @@
+import { useRouter } from "expo-router";
 import { AlertCircle } from "lucide-react-native";
 import React from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 const LogoutModal = ({ isModalOpen, onModalOpen }: any) => {
+  const router = useRouter();
+
   const handleLogout = () => {
-    console.log("User logged out! 💨");
     onModalOpen(false);
+    router.replace("/(auth)/auth");
     // Tambahin logika navigasi atau clear session di sini 💡
   };
   return (
