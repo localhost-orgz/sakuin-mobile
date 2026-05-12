@@ -72,7 +72,7 @@ export default function Home() {
           <RecentTransactions transactions={RECENT_TRANSACTIONS} />
 
           {/* Dev links — remove in production */}
-          <Link href={"/(others)/addForm"}>
+          <Link href={"/(others)/(transaction)/addForm"}>
             <View
               style={{
                 padding: 12,
