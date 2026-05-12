@@ -56,7 +56,6 @@ export default function SignIn() {
 
         if (token) {
           token = token.split("#")[0];
-          
           token = token.split("&")[0];
 
           await SecureStore.setItemAsync("user_token", token);
@@ -66,6 +65,7 @@ export default function SignIn() {
     } catch (error) {
       console.error("Login Error:", error);
     }
+    // router.replace("/(main)/home");
   };
 
   return (

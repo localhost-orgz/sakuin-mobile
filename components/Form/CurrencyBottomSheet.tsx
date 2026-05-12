@@ -121,7 +121,7 @@ const CurrencyBottomSheet = forwardRef<BottomSheet, Props>(
                         : "font-semibold text-gray-900"
                     }`}
                   >
-                    {item.code}
+                    {item.flag} {item.code}
                   </Text>
                   <Text className="text-gray-500 text-xs">{item.name}</Text>
                 </View>

@@ -3,7 +3,17 @@ import { Text, View } from "react-native";
 import AddWallet from "./AddWallet";
 import WalletCard from "./WalletCard";
 
-const WalletCardsSection = ({ wallets, isBalanceShow, onBalanceShow }: any) => {
+interface WalletCardsSectionProps {
+  isBalanceShow: boolean;
+  onBalanceShow: (show: boolean) => void;
+  wallets: any[]; // Menampung data dari API
+}
+
+const WalletCardsSection = ({
+  isBalanceShow,
+  onBalanceShow,
+  wallets = [],
+}: WalletCardsSectionProps) => {
   return (
     <>
       <View className="flex-1 mt-5">
@@ -15,9 +25,9 @@ const WalletCardsSection = ({ wallets, isBalanceShow, onBalanceShow }: any) => {
         <AddWallet />
         {wallets.map((item: any) => (
           <WalletCard
+            key={item._id || item.wallet_id}
             isBalanceShow={isBalanceShow}
             onBalanceShow={onBalanceShow}
-            key={item.id}
             item={item}
           />
         ))}

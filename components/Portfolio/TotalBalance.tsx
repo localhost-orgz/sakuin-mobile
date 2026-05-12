@@ -4,13 +4,18 @@ import { Eye, EyeOff, Target, Wallet } from "lucide-react-native";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
-const TotalBalance = ({ isBalanceShow, onBalanceShow }: any) => {
-  const walletCount = WALLET_LIST.length;
+const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [] }: any) => {
+  const walletCount = wallets.length;
+  
+  const totalAmount = wallets.reduce((acc: number, curr: any) => acc + curr.balance, 0);
+
+  const formattedBalance = new Intl.NumberFormat("id-ID").format(totalAmount);
+
   const completedGoals = CURRENT_GOALS.filter(
     (g: any) => g.current >= g.target,
   ).length;
   const totalGoals = CURRENT_GOALS.length;
-  const goalsPercent = Math.round((completedGoals / totalGoals) * 100);
+  const goalsPercent = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
 
   return (
     <View
@@ -87,7 +92,7 @@ const TotalBalance = ({ isBalanceShow, onBalanceShow }: any) => {
               letterSpacing: -0.5,
             }}
           >
-            {isBalanceShow ? "16.674.522" : "•••••••••"}
+            {isBalanceShow ? formattedBalance : "•••••••••"}
           </Text>
         </View>
 
