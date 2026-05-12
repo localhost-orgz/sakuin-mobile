@@ -8,15 +8,13 @@ const LogoutModal = ({ isModalOpen, onModalOpen }: any) => {
   const router = useRouter();
 
   const handleLogout = async () => {
-    // try {
-    //   await SecureStore.deleteItemAsync("user_token");
-    //   router.replace("/(auth)/auth");
-    //   onModalOpen(false);
-    // } catch (error) {
-    //   console.error("Gagal Logout:", error);
-    // }
+    try {
+      await SecureStore.deleteItemAsync("user_token");
       router.replace("/(auth)/auth");
       onModalOpen(false);
+    } catch (error) {
+      console.error("Gagal Logout:", error);
+    }
   };
 
   return (

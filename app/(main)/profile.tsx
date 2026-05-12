@@ -1,14 +1,47 @@
-import React, { useState } from "react"; // Tambah useState ✨
-import { ScrollView, StatusBar } from "react-native";
+import React, { useEffect, useState } from "react"; // Tambah useState ✨
+import { ActivityIndicator, ScrollView, StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomProfile from "@/components/Profile/BottomProfile";
 import LogoutModal from "@/components/Profile/LogoutModa";
 import TopProfile from "@/components/Profile/TopProfile";
+import { apiRequest } from "@/utils/api"; // Import helper yang kita buat tadi
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false); // State modal 🔑
+
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUser = async () => {
+    try {
+      setLoading(true);
+      const res = await apiRequest("/auth/profile", {
+        method: "GET",
+      });
+
+      if (res.status === "success" && res.data) {
+        setUser(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -19,7 +52,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
       >
-        <TopProfile />
+        <TopProfile userData={user} />
         {/* Oper fungsi buat buka modal ke komponen bawah kalau perlu */}
         <BottomProfile
           isModalOpen={isLogoutModalOpen}

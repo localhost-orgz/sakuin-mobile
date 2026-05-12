@@ -3,9 +3,21 @@ import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TopProfile = () => {
+interface UserProps {
+  userData: {
+    name?: string;
+    email?: string;
+    avatar_url?: string;
+  } | null;
+}
+
+const TopProfile = ({ userData }: UserProps) => {
   const insets = useSafeAreaInsets();
   const [avatarError, setAvatarError] = useState(false);
+
+  const profileImage = userData?.avatar_url 
+    ? { uri: userData.avatar_url } 
+    : require("../../assets/images/profile.jpg");
 
   return (
     <View
@@ -17,17 +29,19 @@ const TopProfile = () => {
       </View>
 
       <View className="relative mb-4">
-        <View className="w-24 h-24 rounded-full bg-gray-300 overflow-hidden">
+        <View className="w-24 h-24 rounded-full bg-gray-300 overflow-hidden border-2 border-white/20">
           {!avatarError ? (
             <Image
-              source={require("../../assets/images/profile.jpg")}
+              source={profileImage}
               className="w-full h-full"
               resizeMode="cover"
               onError={() => setAvatarError(true)}
             />
           ) : (
-            <View className="w-full h-full bg-gray-300 items-center justify-center">
-              <Text className="text-3xl font-bold text-white">U</Text>
+            <View className="w-full h-full bg-gray-400 items-center justify-center">
+              <Text className="text-3xl font-bold text-white">
+                {userData?.name?.charAt(0).toUpperCase()}
+              </Text>
             </View>
           )}
         </View>
@@ -40,8 +54,15 @@ const TopProfile = () => {
         </TouchableOpacity>
       </View>
 
-      <Text className="text-white text-xl font-bold mb-1">User</Text>
-      <Text className="text-white/70 text-sm">blablabla@gmail.com</Text>
+      {/* Menampilkan Nama User secara Dinamis */}
+      <Text className="text-white text-xl font-bold mb-1">
+        {userData?.name || "Loading..."}
+      </Text>
+
+      {/* Menampilkan Email User secara Dinamis */}
+      <Text className="text-white/70 text-sm">
+        {userData?.email || "..."}
+      </Text>
     </View>
   );
 };
