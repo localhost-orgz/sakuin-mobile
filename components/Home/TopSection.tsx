@@ -24,9 +24,17 @@ import WalletCard from "./WalletCard";
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
 
+interface UserProps {
+  userData: {
+    name?: string;
+    email?: string;
+    avatar_url?: string;
+  } | null;
+}
+
 // ─── PinnedGreeting ───────────────────────────────────────────────────────────
 // Exported separately so home.tsx can render it above the ScrollView.
-export const PinnedGreeting = () => {
+export const PinnedGreeting = ({ userData }: UserProps) => {
   const insets = useSafeAreaInsets();
 
   return (
@@ -54,7 +62,7 @@ export const PinnedGreeting = () => {
               letterSpacing: -0.3,
             }}
           >
-            Hi, User
+            Hi, {userData?.name?.split(" ")[0]}
           </Text>
           <Text
             style={{
@@ -73,12 +81,16 @@ export const PinnedGreeting = () => {
             borderRadius: 21,
             backgroundColor: "black",
             overflow: "hidden",
-            borderWidth: 2,
+            borderWidth: 1.5,
             borderColor: "rgba(255,255,255,0.3)",
           }}
         >
           <Image
-            source={require("../../assets/images/profile.jpg")}
+            source={
+              userData?.avatar_url
+                ? { uri: userData.avatar_url }
+                : require("../../assets/images/profile.jpg")
+            }
             style={{ width: "100%", height: "100%", borderRadius: 21 }}
             resizeMode="cover"
           />
@@ -176,11 +188,11 @@ export const ScrollableTopContent = ({
 };
 
 // ─── Default export (kept for backward compat if anything imports TopSection) ─
-export default function TopSection() {
+export default function TopSection({ userData }: UserProps) {
   const [isBalanceShow, setIsBalanceShow] = useState(false);
   return (
     <>
-      <PinnedGreeting />
+      <PinnedGreeting userData={userData} />
       <ScrollableTopContent
         isBalanceShow={isBalanceShow}
         setIsBalanceShow={setIsBalanceShow}

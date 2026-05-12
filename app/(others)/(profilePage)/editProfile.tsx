@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Camera, Check, ChevronLeft, Mail, User } from "lucide-react-native";
+import { Camera, ChevronLeft, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Image,
@@ -39,9 +39,9 @@ const EditProfile = () => {
           <Text className="text-white text-xl font-bold">Edit Profile</Text>
           <TouchableOpacity
             onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-white/20"
+            className="w-10 h-10 items-center justify-center rounded-full bg-white/0"
           >
-            <Check size={22} color="white" />
+            {/* <Check size={22} color="white" /> */}
           </TouchableOpacity>
         </View>
 
@@ -82,9 +82,6 @@ const EditProfile = () => {
         showsVerticalScrollIndicator={false}
       >
         <View className="gap-y-6">
-          {" "}
-          {/* Pake gap-y biar konsisten jaraknya 📏 */}
-          {/* Input Nama */}
           <View>
             <View className="flex-row items-center mb-3 ml-1">
               <User size={14} color="#00bf71" />

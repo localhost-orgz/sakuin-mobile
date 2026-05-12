@@ -1,6 +1,5 @@
-import { Plus } from "lucide-react-native";
 import React, { useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface UserProps {
@@ -47,13 +46,6 @@ const TopProfile = ({ userData }: UserProps) => {
             </View>
           )}
         </View>
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 items-center justify-center border-2 border-white shadow-sm"
-        >
-          <Plus size={14} color="white" strokeWidth={3} />
-        </TouchableOpacity>
       </View>
 
       <Text className="text-white text-xl font-bold mb-1">
