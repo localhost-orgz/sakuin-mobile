@@ -188,15 +188,15 @@ export const ScrollableTopContent = ({
 };
 
 // ─── Default export (kept for backward compat if anything imports TopSection) ─
-// export default function TopSection() {
-//   const [isBalanceShow, setIsBalanceShow] = useState(false);
-//   return (
-//     <>
-//       <PinnedGreeting />
-//       <ScrollableTopContent
-//         isBalanceShow={isBalanceShow}
-//         setIsBalanceShow={setIsBalanceShow}
-//       />
-//     </>
-//   );
-// }
+export default function TopSection({ userData }: UserProps) {
+  const [isBalanceShow, setIsBalanceShow] = useState(false);
+  return (
+    <>
+      <PinnedGreeting userData={userData} />
+      <ScrollableTopContent
+        isBalanceShow={isBalanceShow}
+        setIsBalanceShow={setIsBalanceShow}
+      />
+    </>
+  );
+}
