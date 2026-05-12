@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
-import AddWallet from "./AddWallet";
+import AddGoal from "./AddGoal";
 import GoalCard from "./GoalCard";
 
 const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow }: any) => {
@@ -11,7 +11,7 @@ const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow }: any) => {
       </View>
       <View className="flex-row flex-wrap px-5 mt-3 justify-between">
         {/* Item Wallet */}
-        <AddWallet />
+        <AddGoal />
         {goals.map((goal: any) => (
           <GoalCard
             isBalanceShow={isBalanceShow}
