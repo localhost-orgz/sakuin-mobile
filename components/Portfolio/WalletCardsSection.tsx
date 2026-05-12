@@ -6,13 +6,15 @@ import WalletCard from "./WalletCard";
 interface WalletCardsSectionProps {
   isBalanceShow: boolean;
   onBalanceShow: (show: boolean) => void;
-  wallets: any[]; // Menampung data dari API
+  wallets: any[];
+  onRefreshNeeded: any;
 }
 
 const WalletCardsSection = ({
   isBalanceShow,
   onBalanceShow,
   wallets = [],
+  onRefreshNeeded,
 }: WalletCardsSectionProps) => {
   return (
     <>
@@ -22,7 +24,7 @@ const WalletCardsSection = ({
 
       <View className="flex-row flex-wrap px-5 mt-3 justify-between">
         {/* Item Wallet */}
-        <AddWallet />
+        <AddWallet onRefreshSuccess={onRefreshNeeded} />
         {wallets.map((item: any) => (
           <WalletCard
             key={item._id || item.wallet_id}

@@ -2,6 +2,7 @@
 // Replace the AddWalletModal component's return — swap KeyboardAvoidingView
 // for a keyboard-height-aware Animated.View
 
+import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Plus, WalletMinimal, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -679,7 +680,7 @@ const AddWalletModal = ({
 };
 
 // ─── ADD WALLET BUTTON (unchanged) ───────────────────────────────────────────
-const AddWallet = () => {
+const AddWallet = ({ onRefreshSuccess }: { onRefreshSuccess?: () => void }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -700,8 +701,28 @@ const AddWallet = () => {
     setModalVisible(true);
   };
 
-  const handleAdd = (name: string, themeId: string) => {
-    console.log("New wallet:", { name, themeId });
+  const handleAdd = async (name: string, themeId: string) => {
+    try {
+      const body = {
+        name: name,
+        color: themeId,
+        balance: 0,
+        currency_id: "6a02f8a7de59afc0c23a95c9", // Hardcoded currency_id
+      };
+
+      const response = await apiRequest("/wallets", {
+        method: "POST",
+        body: body,
+      });
+
+      if (response) {
+        if (onRefreshSuccess) {
+          onRefreshSuccess();
+        }
+      }
+    } catch (error) {
+      console.error("Error adding wallet:", error);
+    }
   };
 
   return (

@@ -5,12 +5,15 @@ import WalletCardsSection from "@/components/Portfolio/WalletCardsSection";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { WALLET_LIST } from "@/constants/walletList";
 import { apiRequest } from "@/utils/api";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
+import { RefreshControl } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PortfolioScreen() {
   const [isBalanceShow, setIsBalanceShow] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [wallets, setWallets] = useState([]); // State untuk data wallet
   const [loading, setLoading] = useState(true); // State loading
   const insets = useSafeAreaInsets();
@@ -32,6 +35,12 @@ export default function PortfolioScreen() {
   useEffect(() => {
     fetchWallets();
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchWallets();
+    setRefreshing(false);
+  }, [fetchWallets]);
 
   if (loading) {
     return (
@@ -60,6 +69,7 @@ export default function PortfolioScreen() {
           isBalanceShow={isBalanceShow}
           onBalanceShow={setIsBalanceShow}
           wallets={wallets}
+          onRefreshNeeded={fetchWallets}
         />
         <GoalCardsSection
           isBalanceShow={isBalanceShow}
