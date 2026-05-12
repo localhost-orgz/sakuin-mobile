@@ -8,8 +8,8 @@
 
 import { Link } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CurrentGoals from "@/components/Home/CurrentGoals";
@@ -22,24 +22,57 @@ import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import { RECENT_TRANSACTIONS } from "@/constants/transactionList";
+import { apiRequest } from "@/utils/api";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
   const [isBalanceShow, setIsBalanceShow] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUser = async () => {
+    try {
+      setLoading(true);
+      const res = await apiRequest("/auth/profile", {
+        method: "GET",
+      });
+
+      if (res.status === "success" && res.data) {
+        setUser(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    fetchUser()
     // Replace with your real data fetch (re-fetch wallet balances, transactions, etc.)
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
       <StatusBar style="light" />
 
       {/* ── PINNED GREETING (never scrolls) ───────────────────────────── */}
-      <PinnedGreeting />
+      <PinnedGreeting userData={user} />
 
       {/* ── SCROLLABLE BODY ───────────────────────────────────────────── */}
       <ScrollView
