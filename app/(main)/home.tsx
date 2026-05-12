@@ -1,15 +1,6 @@
-/**
- * app/(main)/home.tsx
- *
- * - "Hi, User" greeting + avatar is pinned (never scrolls)
- * - Everything else (wallet carousel, stats, sections) is in one ScrollView
- * - Pull-to-refresh triggers a data refresh
- */
-
-import { Link } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CurrentGoals from "@/components/Home/CurrentGoals";
@@ -70,67 +61,6 @@ export default function Home() {
           <TopSpendCategory TopCategories={TOP_SPENDING_CATEGORIES} />
           <CurrentGoals goalsList={CURRENT_GOALS} />
           <RecentTransactions transactions={RECENT_TRANSACTIONS} />
-
-          {/* Dev links — remove in production */}
-          <Link href={"/(others)/(transaction)/addForm"}>
-            <View
-              style={{
-                padding: 12,
-                backgroundColor: "#0ea5e9",
-                borderRadius: 8,
-                margin: 16,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                Add form
-              </Text>
-            </View>
-          </Link>
-          <Link href={"/(others)/detailWallet"}>
-            <View
-              style={{
-                padding: 12,
-                backgroundColor: "#0ea5e9",
-                borderRadius: 8,
-                marginHorizontal: 16,
-                marginBottom: 8,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                Detail wallet
-              </Text>
-            </View>
-          </Link>
-          <Link href={"/(others)/detailGoal"}>
-            <View
-              style={{
-                padding: 12,
-                backgroundColor: "#0ea5e9",
-                borderRadius: 8,
-                marginHorizontal: 16,
-                marginBottom: 8,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                Detail goal
-              </Text>
-            </View>
-          </Link>
-          <Link href={"/(auth)/welcome"}>
-            <View
-              style={{
-                padding: 12,
-                backgroundColor: "#0ea5e9",
-                borderRadius: 8,
-                marginHorizontal: 16,
-                marginBottom: 8,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                Onboarding
-              </Text>
-            </View>
-          </Link>
         </View>
       </ScrollView>
     </View>

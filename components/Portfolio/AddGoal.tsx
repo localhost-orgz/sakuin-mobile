@@ -1001,7 +1001,7 @@ const AddGoal = () => {
             width: "100%",
             aspectRatio: width < 400 ? 0.9 : 1,
           }}
-          className="w-[48%] h-40 bg-slate-200/50 border-[2px] flex justify-center items-center border-dashed border-slate-400 relative rounded-3xl mb-5"
+          className="h-40 bg-slate-200/50 border-[2px] flex justify-center items-center border-dashed border-slate-400 relative rounded-3xl mb-5"
         >
           <View className="p-2 rounded-full bg-slate-400/30">
             <Plus strokeWidth={4} color={"#90a1b9"} />

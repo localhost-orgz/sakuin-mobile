@@ -15,8 +15,8 @@ const TopProfile = ({ userData }: UserProps) => {
   const insets = useSafeAreaInsets();
   const [avatarError, setAvatarError] = useState(false);
 
-  const profileImage = userData?.avatar_url 
-    ? { uri: userData.avatar_url } 
+  const profileImage = userData?.avatar_url
+    ? { uri: userData.avatar_url }
     : require("../../assets/images/profile.jpg");
 
   return (
@@ -29,38 +29,38 @@ const TopProfile = ({ userData }: UserProps) => {
       </View>
 
       <View className="relative mb-4">
-        <View className="w-24 h-24 rounded-full bg-gray-300 overflow-hidden border-2 border-white/20">
+        {/* Tambahin border-[3px] biar lebih kelihatan premium ✨ */}
+        <View className="w-24 h-24 rounded-full bg-gray-300 border-[3px] border-white/30 overflow-hidden">
           {!avatarError ? (
             <Image
               source={profileImage}
-              className="w-full h-full"
+              // KUNCI: Kasih rounded-full juga di gambarnya langsung! 🔑
+              className="w-full h-full rounded-full"
               resizeMode="cover"
               onError={() => setAvatarError(true)}
             />
           ) : (
             <View className="w-full h-full bg-gray-400 items-center justify-center">
               <Text className="text-3xl font-bold text-white">
-                {userData?.name?.charAt(0).toUpperCase()}
+                {userData?.name?.charAt(0).toUpperCase() || "U"}
               </Text>
             </View>
           )}
         </View>
 
         <TouchableOpacity
-          activeOpacity={0.8}
-          className="absolute bottom-0.5 right-0.5 w-7 h-7 rounded-full bg-gray-900 items-center justify-center border-2 border-white"
+          activeOpacity={0.9}
+          className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 items-center justify-center border-2 border-white shadow-sm"
         >
-          <Plus size={13} color="white" strokeWidth={3} />
+          <Plus size={14} color="white" strokeWidth={3} />
         </TouchableOpacity>
       </View>
 
-      {/* Menampilkan Nama User secara Dinamis */}
       <Text className="text-white text-xl font-bold mb-1">
         {userData?.name || "Loading..."}
       </Text>
 
-      {/* Menampilkan Email User secara Dinamis */}
-      <Text className="text-white/70 text-sm">
+      <Text className="text-white/70 text-sm font-medium tracking-wide">
         {userData?.email || "..."}
       </Text>
     </View>
