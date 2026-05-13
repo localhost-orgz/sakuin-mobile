@@ -214,6 +214,27 @@ export default function Home() {
             </View>
           </Pressable>
         </Link>
+
+        <Link href="/(others)/(transaction)/allTransactions" asChild>
+          <Pressable className="bg-white mx-4 mt-4 p-5 rounded-[24px] flex-row items-center justify-between border border-gray-100 shadow-sm shadow-black/5">
+            <View className="flex-row items-center">
+              <View className="bg-sky-100 p-3 rounded-2xl mr-4">
+                <Camera size={24} className="text-sky-500" strokeWidth={2.5} />
+              </View>
+              <View>
+                <Text className="text-slate-900 font-bold text-lg">
+                  All Transactions Page
+                </Text>
+                <Text className="text-slate-400 text-xs">
+                  Pindahkan uang dari Wallet satu ke wallet yang lainnya
+                </Text>
+              </View>
+            </View>
+            <View className="bg-slate-50 p-2 rounded-full">
+              <Plus size={20} color="#cbd5e1" />
+            </View>
+          </Pressable>
+        </Link>
         {/* Taruh Modal di paling bawah sebelum penutup View utama */}
         <SakuSnapModal
           visible={snapModalVisible}
