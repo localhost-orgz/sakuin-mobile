@@ -3,6 +3,8 @@ import { WalletCards } from "lucide-react-native";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
+import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme"; //
+
 // Update Interface sesuai Response API
 export interface WalletItem {
   _id: string;
@@ -18,24 +20,14 @@ interface WalletCardProps {
   onBalanceShow: (show: boolean) => void;
 }
 
-// Data Theme untuk pemetaan warna
-const THEME_OPTIONS = [
-  { id: "green", gradient: ["#00bf71", "#009e5f"], accent: "#00bf71" },
-  { id: "blue", gradient: ["#3b82f6", "#1d4ed8"], accent: "#3b82f6" },
-  { id: "violet", gradient: ["#8b5cf6", "#6d28d9"], accent: "#8b5cf6" },
-  { id: "rose", gradient: ["#f43f5e", "#be123c"], accent: "#f43f5e" },
-  { id: "amber", gradient: ["#f59e0b", "#b45309"], accent: "#f59e0b" },
-  { id: "slate", gradient: ["#334155", "#0f172a"], accent: "#64748b" },
-];
-
 const WalletCard = ({
   item,
   isBalanceShow,
   onBalanceShow,
 }: WalletCardProps) => {
-  
-  // Ambil tema berdasarkan warna dari API
-  const activeTheme = THEME_OPTIONS.find((t) => t.id === item.color.toLowerCase()) || THEME_OPTIONS[1]; // Default ke blue jika tidak ketemu
+  const { theme } = useWalletTheme(
+    (item.color.toLowerCase() as WalletThemeId) || "ocean",
+  );
 
   // Format ribuan Indonesia (contoh: 30.000.000)
   const formatCurrency = (value: number) => {
@@ -43,7 +35,13 @@ const WalletCard = ({
   };
 
   return (
-    <Link href={{ pathname: "/(others)/detailWallet", params: { walletId: item._id } }} asChild>
+    <Link
+      href={{
+        pathname: "/(others)/detailWallet",
+        params: { walletId: item._id },
+      }}
+      asChild
+    >
       <Pressable
         style={{
           shadowColor: "#000",
@@ -51,7 +49,7 @@ const WalletCard = ({
           shadowOpacity: 0.04,
           shadowRadius: 3,
           elevation: 5,
-          backgroundColor: activeTheme.gradient[1], // Menggunakan warna gelap gradient sebagai base shadow
+          backgroundColor: theme.cardColorBack, // Menggunakan warna gelap gradient sebagai base shadow
         }}
         className="w-[48%] h-40 relative rounded-3xl mb-5"
       >
@@ -64,12 +62,12 @@ const WalletCard = ({
 
         {/* Bagian utama kartu */}
         <View
-          style={{ backgroundColor: activeTheme.gradient[0] }}
+          style={{ backgroundColor: theme.cardColor }}
           className="w-full h-[75%] absolute bottom-0 p-3 rounded-3xl flex justify-between"
         >
           {/* Icon Box */}
           <View
-            style={{ backgroundColor: activeTheme.gradient[1] }}
+            style={{ backgroundColor: theme.cardColorBack }}
             className="w-9 h-9 flex items-center justify-center rounded-lg"
           >
             <WalletCards size={20} color={"white"} />
