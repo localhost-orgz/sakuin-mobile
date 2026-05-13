@@ -11,11 +11,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeftRight,
   ChevronLeft,
+  Edit2,
   MoreHorizontal,
   MoveUpRight,
   Plus,
   Search,
+  Trash2,
   TrendingUp,
+  X,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -28,6 +31,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import EditGoalSheet from "./editGoal";
 
 // ─── Mock goal data ───────────────────────────────────────────────────────────
 const MOCK_GOALS = [
@@ -264,6 +268,8 @@ export default function DetailGoal() {
 
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isEditSheetVisible, setIsEditSheetVisible] = useState(false);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -289,6 +295,15 @@ export default function DetailGoal() {
   }, [search, allTransactions]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
+
+  const goalData = {
+    id: "2",
+    name: "Bali Trip",
+    icon: "🏖️",
+    current: 3200000,
+    target: 5000000,
+    themeId: "ember",
+  };
 
   // ── Luminance-based contrast tokens ───────────────────────────────────────
   const hexLuminance = (hex: string): number => {
@@ -660,6 +675,7 @@ export default function DetailGoal() {
                 justifyContent: "center",
               }}
               activeOpacity={0.6}
+              onPress={() => setIsMenuVisible(true)}
             >
               <MoreHorizontal size={22} color={headerText} strokeWidth={2.5} />
             </TouchableOpacity>
@@ -718,6 +734,132 @@ export default function DetailGoal() {
             </View>
           )}
           renderItem={({ item }) => <TransactionItem item={item} />}
+        />
+
+        {isMenuVisible && (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "flex-end",
+              zIndex: 1000,
+            }}
+          >
+            {/* Overlay untuk nutup sheet kalo di-klik di luar */}
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => setIsMenuVisible(false)}
+            />
+
+            <View
+              style={{
+                backgroundColor: "white",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                padding: 24,
+                paddingTop: 15,
+                paddingBottom: insets.bottom + 20,
+              }}
+            >
+              {/* 💡 Garis Handle Bar di paling atas tengah */}
+              <View
+                className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto"
+                style={{ marginBottom: 20 }}
+              />
+              {/* Header Sheet */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 18, fontWeight: "800", color: "#1a1f36" }}
+                >
+                  Opsi Goal
+                </Text>
+                <TouchableOpacity onPress={() => setIsMenuVisible(false)}>
+                  <X size={20} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
+              {/* Opsi Edit */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#f3f4f6",
+                  gap: 12,
+                }}
+                onPress={() => {
+                  setIsEditSheetVisible(true);
+                  // router.push({ pathname: "/editGoal", params: { goalId } }); 💡 Contoh navigasi
+                }}
+              >
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: "#eff6ff",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Edit2 size={18} color="#3b82f6" />
+                </View>
+                <Text
+                  style={{ fontSize: 16, fontWeight: "600", color: "#1a1f36" }}
+                >
+                  Edit Goal
+                </Text>
+              </TouchableOpacity>
+              {/* Opsi Delete */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  gap: 12,
+                }}
+                onPress={() => {
+                  setIsMenuVisible(false);
+                  alert("Hapus Goal?"); // 😎 Ganti dengan logic hapus beneran nanti
+                }}
+              >
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: "#fef2f2",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Trash2 size={18} color="#ef4444" />
+                </View>
+                <Text
+                  style={{ fontSize: 16, fontWeight: "600", color: "#ef4444" }}
+                >
+                  Hapus Goal
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <EditGoalSheet
+          isVisible={isEditSheetVisible}
+          onClose={() => setIsEditSheetVisible(false)}
+          initialData={goalData}
         />
       </View>
     </>
