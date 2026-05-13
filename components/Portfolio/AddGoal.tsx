@@ -1,5 +1,4 @@
 import { MONEY_TRACKER_EMOJIS } from "@/constants/emojiList";
-import { LinearGradient } from "expo-linear-gradient";
 import { Check, Plus, Target, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -18,45 +17,12 @@ import {
 } from "react-native";
 const { width } = Dimensions.get("window");
 
-// ─── Theme definitions (mirrors AddWallet) ────────────────────────────────────
-const THEME_OPTIONS = [
-  {
-    id: "green",
-    label: "Forest",
-    gradient: ["#00bf71", "#009e5f"] as [string, string],
-    accent: "#00bf71",
-  },
-  {
-    id: "blue",
-    label: "Ocean",
-    gradient: ["#3b82f6", "#1d4ed8"] as [string, string],
-    accent: "#3b82f6",
-  },
-  {
-    id: "violet",
-    label: "Dusk",
-    gradient: ["#8b5cf6", "#6d28d9"] as [string, string],
-    accent: "#8b5cf6",
-  },
-  {
-    id: "rose",
-    label: "Bloom",
-    gradient: ["#f43f5e", "#be123c"] as [string, string],
-    accent: "#f43f5e",
-  },
-  {
-    id: "amber",
-    label: "Ember",
-    gradient: ["#f59e0b", "#b45309"] as [string, string],
-    accent: "#f59e0b",
-  },
-  {
-    id: "slate",
-    label: "Ink",
-    gradient: ["#334155", "#0f172a"] as [string, string],
-    accent: "#64748b",
-  },
-];
+import {
+  getWalletTheme,
+  getWalletThemeIds,
+  WalletTheme,
+  WalletThemeId,
+} from "@/hooks/useWalletTheme";
 
 // ─── ThemeCircle ──────────────────────────────────────────────────────────────
 const ThemeCircle = ({
@@ -65,7 +31,7 @@ const ThemeCircle = ({
   onPress,
   revealAnim,
 }: {
-  theme: (typeof THEME_OPTIONS)[0];
+  theme: WalletTheme;
   selected: boolean;
   onPress: () => void;
   revealAnim: Animated.Value;
@@ -107,20 +73,18 @@ const ThemeCircle = ({
       }}
     >
       <Pressable onPress={handlePress}>
-        <LinearGradient
-          colors={theme.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
             width: 44,
             height: 44,
             borderRadius: 22,
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: theme.accentColor,
           }}
         >
           {selected && <Check size={16} color="white" strokeWidth={3} />}
-        </LinearGradient>
+        </View>
         {selected && (
           <View
             style={{
@@ -131,7 +95,7 @@ const ThemeCircle = ({
               bottom: -4,
               borderRadius: 26,
               borderWidth: 2.5,
-              borderColor: theme.accent,
+              borderColor: theme.accentColor,
             }}
           />
         )}
@@ -140,7 +104,7 @@ const ThemeCircle = ({
         style={{
           fontSize: 9,
           fontWeight: selected ? "700" : "500",
-          color: selected ? theme.accent : "#9ca3af",
+          color: selected ? theme.accentColor : "#9ca3af",
         }}
       >
         {theme.label}
@@ -174,7 +138,13 @@ const AddGoalModal = ({
   const [goalName, setGoalName] = useState("");
   const [goalEmoji, setGoalEmoji] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState(THEME_OPTIONS[0]);
+  const allThemeIds = getWalletThemeIds();
+
+  const [selectedThemeId, setSelectedThemeId] = useState<WalletThemeId>(
+    allThemeIds[0],
+  );
+  const selectedTheme = getWalletTheme(selectedThemeId);
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [activeField, setActiveField] = useState<
     "name" | "amount" | "emoji" | null
@@ -294,7 +264,7 @@ const AddGoalModal = ({
     setGoalName("");
     setGoalEmoji("");
     setTargetAmount("");
-    setSelectedTheme(THEME_OPTIONS[0]);
+    setSelectedThemeId(allThemeIds[0]);
     setShowEmojiPicker(false);
     onClose();
   };
@@ -452,14 +422,14 @@ const AddGoalModal = ({
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  backgroundColor: `${selectedTheme.accent}18`,
+                  backgroundColor: `${selectedTheme.bgColor}`,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <Target
                   size={18}
-                  color={selectedTheme.accent}
+                  color={selectedTheme.accentColor}
                   strokeWidth={2.5}
                 />
               </View>
@@ -517,7 +487,7 @@ const AddGoalModal = ({
               <View
                 style={INPUT_CONTAINER(
                   activeField === "name",
-                  selectedTheme.accent,
+                  selectedTheme.accentColor,
                 )}
               >
                 <TextInput
@@ -568,10 +538,12 @@ const AddGoalModal = ({
                   borderRadius: 14,
                   borderWidth: 1.5,
                   borderColor:
-                    activeField === "emoji" ? selectedTheme.accent : "#e2e8f0",
+                    activeField === "emoji"
+                      ? selectedTheme.accentColor
+                      : "#e2e8f0",
                   backgroundColor:
                     activeField === "emoji"
-                      ? `${selectedTheme.accent}10`
+                      ? `${selectedTheme.accentColor}10`
                       : "#f8fafc",
                   alignItems: "center",
                   justifyContent: "center",
@@ -647,7 +619,7 @@ const AddGoalModal = ({
                       style={{
                         fontSize: 12,
                         fontWeight: "800",
-                        color: selectedTheme.accent,
+                        color: selectedTheme.accentColor,
                         marginBottom: 10,
                         textTransform: "uppercase",
                         letterSpacing: 1,
@@ -676,13 +648,13 @@ const AddGoalModal = ({
                               height: 58,
                               borderRadius: 16,
                               backgroundColor: selected
-                                ? `${selectedTheme.accent}15`
+                                ? `${selectedTheme.accentColor}15`
                                 : pressed
                                   ? "#e2e8f0"
                                   : "white",
                               borderWidth: 1.5,
                               borderColor: selected
-                                ? selectedTheme.accent
+                                ? selectedTheme.accentColor
                                 : "#e2e8f0",
                               alignItems: "center",
                               justifyContent: "center",
@@ -702,7 +674,7 @@ const AddGoalModal = ({
                                   width: 18,
                                   height: 18,
                                   borderRadius: 999,
-                                  backgroundColor: selectedTheme.accent,
+                                  backgroundColor: selectedTheme.accentColor,
                                   alignItems: "center",
                                   justifyContent: "center",
                                 }}
@@ -743,7 +715,7 @@ const AddGoalModal = ({
             <View
               style={INPUT_CONTAINER(
                 activeField === "amount",
-                selectedTheme.accent,
+                selectedTheme.accentColor,
               )}
             >
               <Text
@@ -751,7 +723,9 @@ const AddGoalModal = ({
                   fontSize: 15,
                   fontWeight: "700",
                   color:
-                    activeField === "amount" ? selectedTheme.accent : "#94a3b8",
+                    activeField === "amount"
+                      ? selectedTheme.accentColor
+                      : "#94a3b8",
                 }}
               >
                 Rp
@@ -779,7 +753,7 @@ const AddGoalModal = ({
               {targetAmount.length > 0 && (
                 <View
                   style={{
-                    backgroundColor: `${selectedTheme.accent}12`,
+                    backgroundColor: `${selectedTheme.accentColor}12`,
                     paddingHorizontal: 8,
                     paddingVertical: 3,
                     borderRadius: 20,
@@ -789,7 +763,7 @@ const AddGoalModal = ({
                     style={{
                       fontSize: 10,
                       fontWeight: "700",
-                      color: selectedTheme.accent,
+                      color: selectedTheme.accentColor,
                     }}
                   >
                     {(() => {
@@ -807,6 +781,7 @@ const AddGoalModal = ({
             </View>
           </Animated.View>
 
+          {/* ── Color Theme ── */}
           {/* ── Color Theme ── */}
           <Animated.View
             style={{
@@ -833,7 +808,7 @@ const AddGoalModal = ({
               <Text style={LABEL_STYLE}>Card Theme</Text>
               <View
                 style={{
-                  backgroundColor: `${selectedTheme.accent}18`,
+                  backgroundColor: `${selectedTheme.accentColor}18`,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 20,
@@ -843,13 +818,14 @@ const AddGoalModal = ({
                   style={{
                     fontSize: 11,
                     fontWeight: "700",
-                    color: selectedTheme.accent,
+                    color: "white",
                   }}
                 >
                   {selectedTheme.label}
                 </Text>
               </View>
             </View>
+
             <View
               style={{
                 flexDirection: "row",
@@ -857,15 +833,22 @@ const AddGoalModal = ({
                 paddingHorizontal: 4,
               }}
             >
-              {THEME_OPTIONS.map((theme, index) => (
-                <ThemeCircle
-                  key={theme.id}
-                  theme={theme}
-                  selected={selectedTheme.id === theme.id}
-                  onPress={() => setSelectedTheme(theme)}
-                  revealAnim={themeReveal}
-                />
-              ))}
+              {/* ✅ FIX: getWalletThemeIds balikin array ID langsung */}
+              {getWalletThemeIds()
+                .slice(0, 6)
+                .map((id, index) => {
+                  const themeData = getWalletTheme(id);
+                  return (
+                    <ThemeCircle
+                      key={id}
+                      theme={themeData}
+                      // ✅ FIX: Bandingin ID string langsung
+                      selected={selectedThemeId === id}
+                      onPress={() => setSelectedThemeId(id)}
+                      revealAnim={themeReveal}
+                    />
+                  );
+                })}
             </View>
           </Animated.View>
 
@@ -876,12 +859,12 @@ const AddGoalModal = ({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 10,
-                backgroundColor: `${selectedTheme.accent}10`,
+                backgroundColor: `${selectedTheme.accentColor}10`,
                 borderRadius: 14,
                 padding: 12,
                 marginBottom: 16,
                 borderWidth: 1,
-                borderColor: `${selectedTheme.accent}30`,
+                borderColor: `${selectedTheme.accentColor}30`,
               }}
             >
               <Text style={{ fontSize: 22 }}>{goalEmoji || "🎯"}</Text>
@@ -899,7 +882,7 @@ const AddGoalModal = ({
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  backgroundColor: selectedTheme.accent,
+                  backgroundColor: selectedTheme.accentColor,
                   borderRadius: 20,
                 }}
               >
@@ -924,9 +907,11 @@ const AddGoalModal = ({
               paddingVertical: 16,
               borderRadius: 16,
               backgroundColor: canSubmit
-                ? selectedTheme.accent
-                : `${selectedTheme.accent}40`,
-              shadowColor: canSubmit ? selectedTheme.accent : "transparent",
+                ? selectedTheme.accentColor
+                : `${selectedTheme.accentColor}40`,
+              shadowColor: canSubmit
+                ? selectedTheme.accentColor
+                : "transparent",
               shadowOpacity: 0.4,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 5 },
