@@ -22,51 +22,14 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// ─── Theme definitions ────────────────────────────────────────────────────────
-const THEME_OPTIONS = [
-  {
-    id: "green",
-    label: "Forest",
-    gradient: ["#00bf71", "#009e5f"] as [string, string],
-    accent: "#00bf71",
-    dot: "#00bf71",
-  },
-  {
-    id: "blue",
-    label: "Ocean",
-    gradient: ["#3b82f6", "#1d4ed8"] as [string, string],
-    accent: "#3b82f6",
-    dot: "#3b82f6",
-  },
-  {
-    id: "violet",
-    label: "Dusk",
-    gradient: ["#8b5cf6", "#6d28d9"] as [string, string],
-    accent: "#8b5cf6",
-    dot: "#8b5cf6",
-  },
-  {
-    id: "rose",
-    label: "Bloom",
-    gradient: ["#f43f5e", "#be123c"] as [string, string],
-    accent: "#f43f5e",
-    dot: "#f43f5e",
-  },
-  {
-    id: "amber",
-    label: "Ember",
-    gradient: ["#f59e0b", "#b45309"] as [string, string],
-    accent: "#f59e0b",
-    dot: "#f59e0b",
-  },
-  {
-    id: "slate",
-    label: "Ink",
-    gradient: ["#334155", "#0f172a"] as [string, string],
-    accent: "#64748b",
-    dot: "#334155",
-  },
-];
+// Ganti path sesuai struktur folder kamu
+// Ganti path sesuai struktur folder kamu
+import {
+  WalletTheme,
+  WalletThemeId,
+  getWalletTheme,
+  getWalletThemeIds,
+} from "@/hooks/useWalletTheme";
 
 // ─── WalletPreview (unchanged) ────────────────────────────────────────────────
 const WalletPreview = ({
@@ -74,10 +37,10 @@ const WalletPreview = ({
   theme,
 }: {
   name: string;
-  theme: (typeof THEME_OPTIONS)[0];
+  theme: WalletTheme;
 }) => (
   <LinearGradient
-    colors={theme.gradient}
+    colors={theme.gradientColors}
     start={{ x: 0, y: 0 }}
     end={{ x: 1, y: 1 }}
     style={{
@@ -167,7 +130,7 @@ const ThemeCircle = ({
   index,
   revealAnim,
 }: {
-  theme: (typeof THEME_OPTIONS)[0];
+  theme: WalletTheme;
   selected: boolean;
   onPress: () => void;
   index: number;
@@ -208,20 +171,18 @@ const ThemeCircle = ({
       }}
     >
       <Pressable onPress={handlePress}>
-        <LinearGradient
-          colors={theme.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
             width: 48,
             height: 48,
             borderRadius: 24,
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: theme.accentColor,
           }}
         >
           {selected && <Check size={18} color="white" strokeWidth={3} />}
-        </LinearGradient>
+        </View>
         {selected && (
           <View
             style={{
@@ -232,7 +193,7 @@ const ThemeCircle = ({
               bottom: -4,
               borderRadius: 30,
               borderWidth: 2.5,
-              borderColor: theme.accent,
+              borderColor: theme.accentColor,
             }}
           />
         )}
@@ -241,7 +202,7 @@ const ThemeCircle = ({
         style={{
           fontSize: 10,
           fontWeight: selected ? "700" : "500",
-          color: selected ? theme.accent : "#9ca3af",
+          color: selected ? theme.accentColor : "#9ca3af",
         }}
       >
         {theme.label}
@@ -261,8 +222,11 @@ const AddWalletModal = ({
   onAdd?: (name: string, themeId: string) => void;
 }) => {
   const [walletName, setWalletName] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState(THEME_OPTIONS[0]);
-
+  const allThemeIds = getWalletThemeIds();
+  const [selectedThemeId, setSelectedThemeId] = useState<WalletThemeId>(
+    allThemeIds[0],
+  );
+  const selectedTheme = getWalletTheme(selectedThemeId);
   // Sheet + backdrop animations
   const slideAnim = useRef(new Animated.Value(400)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -377,14 +341,14 @@ const AddWalletModal = ({
 
   const handleClose = () => {
     setWalletName("");
-    setSelectedTheme(THEME_OPTIONS[0]);
+    setSelectedThemeId(allThemeIds[0]);
     onClose();
   };
   const handleAdd = () => {
     if (!walletName.trim()) return;
     onAdd?.(walletName.trim(), selectedTheme.id);
     setWalletName("");
-    setSelectedTheme(THEME_OPTIONS[0]);
+    setSelectedThemeId(allThemeIds[0]);
     onClose();
   };
 
@@ -538,7 +502,7 @@ const AddWalletModal = ({
                 backgroundColor: "#f8fafc",
                 borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: walletName ? selectedTheme.accent : "#e2e8f0",
+                borderColor: walletName ? selectedTheme.accentColor : "#e2e8f0",
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 gap: 10,
@@ -546,7 +510,7 @@ const AddWalletModal = ({
             >
               <WalletMinimal
                 size={16}
-                color={walletName ? selectedTheme.accent : "#cbd5e1"}
+                color={walletName ? selectedTheme.accentColor : "#cbd5e1"}
               />
               <TextInput
                 value={walletName}
@@ -609,7 +573,7 @@ const AddWalletModal = ({
               </Text>
               <View
                 style={{
-                  backgroundColor: `${selectedTheme.accent}18`,
+                  backgroundColor: `${selectedTheme.accentColor}18`,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 20,
@@ -619,7 +583,7 @@ const AddWalletModal = ({
                   style={{
                     fontSize: 11,
                     fontWeight: "700",
-                    color: selectedTheme.accent,
+                    color: "white",
                   }}
                 >
                   {selectedTheme.label}
@@ -633,16 +597,19 @@ const AddWalletModal = ({
                 paddingHorizontal: 4,
               }}
             >
-              {THEME_OPTIONS.map((theme, index) => (
-                <ThemeCircle
-                  key={theme.id}
-                  theme={theme}
-                  selected={selectedTheme.id === theme.id}
-                  onPress={() => setSelectedTheme(theme)}
-                  index={index}
-                  revealAnim={circleReveal}
-                />
-              ))}
+              {getWalletThemeIds().map((id, index) => {
+                const themeData = getWalletTheme(id);
+                return (
+                  <ThemeCircle
+                    key={id}
+                    theme={themeData}
+                    selected={selectedThemeId === id}
+                    onPress={() => setSelectedThemeId(id)}
+                    index={index}
+                    revealAnim={circleReveal}
+                  />
+                );
+              })}
             </View>
           </Animated.View>
 
@@ -653,8 +620,8 @@ const AddWalletModal = ({
             className={`flex flex-row items-center gap-5 py-5 px-4 rounded-2xl `}
             style={{
               backgroundColor: canSubmit
-                ? selectedTheme.accent
-                : selectedTheme.accent + "80",
+                ? selectedTheme.accentColor
+                : selectedTheme.accentColor + "80",
             }}
           >
             <Plus
