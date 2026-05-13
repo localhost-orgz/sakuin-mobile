@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"; // Tambah useState ✨
+import React, { useCallback, useState } from "react"; // Tambah useState ✨
 import { ActivityIndicator, ScrollView, StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -6,6 +6,7 @@ import BottomProfile from "@/components/Profile/BottomProfile";
 import LogoutModal from "@/components/Profile/LogoutModa";
 import TopProfile from "@/components/Profile/TopProfile";
 import { apiRequest } from "@/utils/api"; // Import helper yang kita buat tadi
+import { useFocusEffect } from "expo-router";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -31,9 +32,11 @@ export default function ProfileScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchUser();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchUser();
+    }, [])
+  );
 
   if (loading) {
     return (
