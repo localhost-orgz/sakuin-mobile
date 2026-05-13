@@ -6,6 +6,7 @@
  */
 
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
+import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Filter, Search, X } from "lucide-react-native";
@@ -233,6 +234,9 @@ const TransactionRow = ({
     (cat) => cat.id === item.categoryId,
   );
 
+  const { theme } = useWalletTheme(
+    (categoryDetail?.themeId as WalletThemeId) ?? "ocean",
+  );
   return (
     <Pressable
       onPress={onPress}
@@ -245,7 +249,7 @@ const TransactionRow = ({
         {/* Left: icon + title + category label */}
         <View className="flex flex-row items-center gap-3">
           <View
-            style={{ backgroundColor: categoryDetail?.bgColor ?? "#FFF4E5" }}
+            style={{ backgroundColor: theme.bgColor }}
             className="w-[45px] h-[45px] flex justify-center items-center rounded-full"
           >
             <Text className="text-md">{categoryDetail?.icon ?? "💸"}</Text>

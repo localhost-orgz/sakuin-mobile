@@ -1,8 +1,29 @@
+/**
+ * app/(others)/(profilePage)/manageCategory.tsx
+ *
+ * Redesigned to match the app design system (green gradient header,
+ * search bar, flat white list). Tapping a row opens an Edit bottom sheet
+ * pre-filled with that category's data. The Edit sheet has "Simpan Perubahan"
+ * and "Hapus Kategori" buttons. Delete shows an Alert before proceeding.
+ * The Add (+) button reuses the original AddCategoryModal.
+ */
+
 import { MONEY_TRACKER_EMOJIS } from "@/constants/emojiList";
 import { LinearGradient } from "expo-linear-gradient";
-import { Check, ChevronLeft, Plus, Search, Tag, X } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
 import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Search,
+  Tag,
+  Trash2,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -13,13 +34,17 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
+// ─── Theme definitions ────────────────────────────────────────────────────────
 const CATEGORY_THEMES = [
   {
     id: "green",
@@ -53,6 +78,52 @@ const CATEGORY_THEMES = [
   },
 ];
 
+// ─── Category type ────────────────────────────────────────────────────────────
+type Category = {
+  id: string;
+  icon: string;
+  label: string;
+  bg: string;
+  themeId: string;
+};
+
+// ─── Initial category list ────────────────────────────────────────────────────
+const INITIAL_CATEGORIES: Category[] = [
+  {
+    id: "1",
+    icon: "🍔",
+    label: "Food & Beverage",
+    bg: "#dcfce7",
+    themeId: "green",
+  },
+  { id: "2", icon: "🎮", label: "Gaming", bg: "#ede9fe", themeId: "violet" },
+  { id: "3", icon: "🚕", label: "Transport", bg: "#dbeafe", themeId: "blue" },
+  { id: "4", icon: "🛍️", label: "Shopping", bg: "#fce7f3", themeId: "rose" },
+  {
+    id: "5",
+    icon: "💊",
+    label: "Health & Fitness",
+    bg: "#dcfce7",
+    themeId: "green",
+  },
+  {
+    id: "6",
+    icon: "▶️",
+    label: "Entertainment",
+    bg: "#dbeafe",
+    themeId: "blue",
+  },
+  {
+    id: "7",
+    icon: "🧾",
+    label: "Bills & Utilities",
+    bg: "#ffedd5",
+    themeId: "orange",
+  },
+  { id: "8", icon: "📚", label: "Education", bg: "#ede9fe", themeId: "violet" },
+];
+
+// ─── ThemeCircle ──────────────────────────────────────────────────────────────
 const ThemeCircle = ({
   theme,
   selected,
@@ -65,7 +136,6 @@ const ThemeCircle = ({
   revealAnim: Animated.Value;
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
-
   const handlePress = () => {
     Animated.sequence([
       Animated.timing(scale, {
@@ -80,10 +150,8 @@ const ThemeCircle = ({
         useNativeDriver: true,
       }),
     ]).start();
-
     onPress();
   };
-
   return (
     <Animated.View
       style={{
@@ -116,7 +184,6 @@ const ThemeCircle = ({
         >
           {selected && <Check size={16} color="white" strokeWidth={3} />}
         </LinearGradient>
-
         {selected && (
           <View
             style={{
@@ -132,7 +199,6 @@ const ThemeCircle = ({
           />
         )}
       </Pressable>
-
       <Text
         style={{
           fontSize: 10,
@@ -146,61 +212,79 @@ const ThemeCircle = ({
   );
 };
 
-const AddCategoryModal = ({
+// ─── Shared Category Sheet (used for both Add & Edit) ─────────────────────────
+type SheetMode = "add" | "edit";
+
+const CategorySheet = ({
   visible,
+  mode,
+  initialData,
   onClose,
+  onSave,
+  onDelete,
 }: {
   visible: boolean;
+  mode: SheetMode;
+  initialData?: Category;
   onClose: () => void;
+  onSave: (data: { name: string; icon: string; themeId: string }) => void;
+  onDelete?: () => void;
 }) => {
-  const [catName, setCatName] = useState("");
-  const [catEmoji, setCatEmoji] = useState("");
+  const [catName, setCatName] = useState(initialData?.label ?? "");
+  const [catEmoji, setCatEmoji] = useState(initialData?.icon ?? "");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState(CATEGORY_THEMES[0]);
-
+  const [selectedTheme, setSelectedTheme] = useState(
+    CATEGORY_THEMES.find((t) => t.id === initialData?.themeId) ??
+      CATEGORY_THEMES[0],
+  );
   const [activeField, setActiveField] = useState<"name" | "emoji" | null>(null);
+
+  // Reset when initialData or mode changes
+  useEffect(() => {
+    if (visible) {
+      setCatName(initialData?.label ?? "");
+      setCatEmoji(initialData?.icon ?? "");
+      setSelectedTheme(
+        CATEGORY_THEMES.find((t) => t.id === initialData?.themeId) ??
+          CATEGORY_THEMES[0],
+      );
+      setShowEmojiPicker(false);
+      setEmojiSearch("");
+    }
+  }, [visible, initialData]);
 
   const slideAnim = useRef(new Animated.Value(600)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-
   const inputReveal = useRef(new Animated.Value(0)).current;
   const emojiReveal = useRef(new Animated.Value(0)).current;
   const themeReveal = useRef(new Animated.Value(0)).current;
-
   const keyboardOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const showEvent =
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-
     const hideEvent =
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const onShow = (e: KeyboardEvent) => {
+    const onShow = (e: KeyboardEvent) =>
       Animated.timing(keyboardOffset, {
         toValue: e.endCoordinates.height,
         duration: Platform.OS === "ios" ? e.duration || 250 : 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-    };
-
-    const onHide = (e: KeyboardEvent) => {
+    const onHide = (e: KeyboardEvent) =>
       Animated.timing(keyboardOffset, {
         toValue: 0,
         duration: Platform.OS === "ios" ? e.duration || 250 : 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-    };
-
-    const showSub = Keyboard.addListener(showEvent, onShow);
-    const hideSub = Keyboard.addListener(hideEvent, onHide);
-
+    const s1 = Keyboard.addListener(showEvent, onShow);
+    const s2 = Keyboard.addListener(hideEvent, onHide);
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      s1.remove();
+      s2.remove();
     };
   }, []);
 
@@ -208,18 +292,15 @@ const AddCategoryModal = ({
     if (visible) {
       slideAnim.setValue(600);
       backdropOpacity.setValue(0);
-
       inputReveal.setValue(0);
       emojiReveal.setValue(0);
       themeReveal.setValue(0);
-
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
           duration: 280,
           useNativeDriver: true,
         }),
-
         Animated.spring(slideAnim, {
           toValue: 0,
           tension: 65,
@@ -233,13 +314,11 @@ const AddCategoryModal = ({
             duration: 260,
             useNativeDriver: true,
           }),
-
           Animated.timing(emojiReveal, {
             toValue: 1,
             duration: 260,
             useNativeDriver: true,
           }),
-
           Animated.timing(themeReveal, {
             toValue: 1,
             duration: 260,
@@ -249,14 +328,12 @@ const AddCategoryModal = ({
       });
     } else {
       Keyboard.dismiss();
-
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 0,
           duration: 180,
           useNativeDriver: true,
         }),
-
         Animated.timing(slideAnim, {
           toValue: 600,
           duration: 240,
@@ -268,34 +345,33 @@ const AddCategoryModal = ({
   }, [visible]);
 
   const handleClose = () => {
-    setCatName("");
-    setCatEmoji("");
     setShowEmojiPicker(false);
-    setSelectedTheme(CATEGORY_THEMES[0]);
-
     onClose();
   };
 
-  const filteredEmojis = MONEY_TRACKER_EMOJIS.filter((item) => {
-    const search = emojiSearch.toLowerCase();
+  const filteredEmojis = useMemo(
+    () =>
+      MONEY_TRACKER_EMOJIS.filter((item) => {
+        const s = emojiSearch.toLowerCase();
+        return (
+          item.label.toLowerCase().includes(s) ||
+          item.category.toLowerCase().includes(s)
+        );
+      }),
+    [emojiSearch],
+  );
 
-    return (
-      item.label.toLowerCase().includes(search) ||
-      item.category.toLowerCase().includes(search)
-    );
-  });
-
-  const groupedEmojis = filteredEmojis.reduce(
-    (acc, item) => {
-      if (!acc[item.category]) {
-        acc[item.category] = [];
-      }
-
-      acc[item.category].push(item);
-
-      return acc;
-    },
-    {} as Record<string, typeof MONEY_TRACKER_EMOJIS>,
+  const groupedEmojis = useMemo(
+    () =>
+      filteredEmojis.reduce(
+        (acc, item) => {
+          if (!acc[item.category]) acc[item.category] = [];
+          acc[item.category].push(item);
+          return acc;
+        },
+        {} as Record<string, typeof MONEY_TRACKER_EMOJIS>,
+      ),
+    [filteredEmojis],
   );
 
   const canSubmit = catName.trim().length > 0;
@@ -308,7 +384,6 @@ const AddCategoryModal = ({
     letterSpacing: 1,
     marginBottom: 8,
   };
-
   const INPUT_CONTAINER = (focused: boolean, accent: string) => ({
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -365,19 +440,14 @@ const AddCategoryModal = ({
             paddingHorizontal: 22,
             paddingTop: 14,
             paddingBottom: 36,
-
             shadowColor: "#000",
             shadowOpacity: 0.15,
             shadowRadius: 24,
-            shadowOffset: {
-              width: 0,
-              height: -8,
-            },
-
+            shadowOffset: { width: 0, height: -8 },
             elevation: 24,
           }}
         >
-          {/* Handle */}
+          {/* Drag handle */}
           <View
             style={{
               width: 40,
@@ -399,11 +469,7 @@ const AddCategoryModal = ({
             }}
           >
             <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
               <View
                 style={{
@@ -417,30 +483,19 @@ const AddCategoryModal = ({
               >
                 <Tag size={18} color={selectedTheme.accent} strokeWidth={2.5} />
               </View>
-
               <View>
                 <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "800",
-                    color: "#0f172a",
-                  }}
+                  style={{ fontSize: 20, fontWeight: "800", color: "#0f172a" }}
                 >
-                  Add Category
+                  {mode === "add" ? "Add Category" : "Edit Category"}
                 </Text>
-
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: "#94a3b8",
-                    marginTop: 1,
-                  }}
-                >
-                  Create custom spending category
+                <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>
+                  {mode === "add"
+                    ? "Create custom spending category"
+                    : "Update or remove category"}
                 </Text>
               </View>
             </View>
-
             <Pressable
               onPress={handleClose}
               style={{
@@ -456,7 +511,7 @@ const AddCategoryModal = ({
             </Pressable>
           </View>
 
-          {/* Input + Emoji */}
+          {/* Name + Emoji row */}
           <Animated.View
             style={{
               opacity: inputReveal,
@@ -468,7 +523,6 @@ const AddCategoryModal = ({
                   }),
                 },
               ],
-
               flexDirection: "row",
               gap: 10,
               marginBottom: 20,
@@ -476,7 +530,6 @@ const AddCategoryModal = ({
           >
             <View style={{ flex: 1 }}>
               <Text style={LABEL_STYLE}>Category Name</Text>
-
               <View
                 style={INPUT_CONTAINER(
                   activeField === "name",
@@ -484,7 +537,6 @@ const AddCategoryModal = ({
                 )}
               >
                 <Tag size={16} color="#94a3b8" />
-
                 <TextInput
                   value={catName}
                   onChangeText={setCatName}
@@ -504,10 +556,8 @@ const AddCategoryModal = ({
                 />
               </View>
             </View>
-
             <View>
               <Text style={LABEL_STYLE}>Icon</Text>
-
               <Pressable
                 onPress={() => {
                   Keyboard.dismiss();
@@ -518,17 +568,13 @@ const AddCategoryModal = ({
                   width: 56,
                   height: 56,
                   borderRadius: 16,
-
                   borderWidth: 1.5,
-
                   borderColor:
                     activeField === "emoji" ? selectedTheme.accent : "#e2e8f0",
-
                   backgroundColor:
                     activeField === "emoji"
                       ? `${selectedTheme.accent}10`
                       : "#f8fafc",
-
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -540,39 +586,27 @@ const AddCategoryModal = ({
             </View>
           </Animated.View>
 
-          {/* Emoji Picker */}
+          {/* Emoji picker */}
           {showEmojiPicker && (
             <Animated.View
               style={{
                 opacity: emojiReveal,
-
                 position: "absolute",
                 top: 165,
                 right: 20,
-
                 width: width * 0.82,
                 maxHeight: 320,
-
                 backgroundColor: "white",
                 borderRadius: 24,
-
                 borderWidth: 1,
                 borderColor: "#e2e8f0",
-
                 shadowColor: "#000",
                 shadowOpacity: 0.12,
                 shadowRadius: 20,
-
-                shadowOffset: {
-                  width: 0,
-                  height: 10,
-                },
-
+                shadowOffset: { width: 0, height: 10 },
                 elevation: 20,
                 zIndex: 999,
-
                 overflow: "hidden",
-
                 transform: [
                   {
                     scale: emojiReveal.interpolate({
@@ -583,35 +617,6 @@ const AddCategoryModal = ({
                 ],
               }}
             >
-              {/* Search */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  margin: 14,
-                  backgroundColor: "#f8fafc",
-                  borderRadius: 14,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                }}
-              >
-                <Search size={16} color="#94a3b8" />
-
-                <TextInput
-                  value={emojiSearch}
-                  onChangeText={setEmojiSearch}
-                  placeholder="Search emoji..."
-                  placeholderTextColor="#94a3b8"
-                  style={{
-                    flex: 1,
-                    marginLeft: 10,
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: "#0f172a",
-                  }}
-                />
-              </View>
-
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
@@ -634,17 +639,11 @@ const AddCategoryModal = ({
                     >
                       {category}
                     </Text>
-
                     <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
+                      style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
                     >
                       {emojis.map((item) => {
-                        const selected = catEmoji === item.emoji;
-
+                        const sel = catEmoji === item.emoji;
                         return (
                           <Pressable
                             key={item.id}
@@ -656,17 +655,13 @@ const AddCategoryModal = ({
                               width: 58,
                               height: 58,
                               borderRadius: 16,
-
-                              backgroundColor: selected
+                              backgroundColor: sel
                                 ? `${selectedTheme.accent}15`
                                 : "#fff",
-
                               borderWidth: 1.5,
-
-                              borderColor: selected
+                              borderColor: sel
                                 ? selectedTheme.accent
                                 : "#e2e8f0",
-
                               alignItems: "center",
                               justifyContent: "center",
                             }}
@@ -682,7 +677,7 @@ const AddCategoryModal = ({
             </Animated.View>
           )}
 
-          {/* Theme */}
+          {/* Theme picker */}
           <Animated.View
             style={{
               opacity: themeReveal,
@@ -694,7 +689,6 @@ const AddCategoryModal = ({
                   }),
                 },
               ],
-
               marginBottom: 28,
             }}
           >
@@ -707,7 +701,6 @@ const AddCategoryModal = ({
               }}
             >
               <Text style={LABEL_STYLE}>Category Theme</Text>
-
               <View
                 style={{
                   backgroundColor: `${selectedTheme.accent}15`,
@@ -727,7 +720,6 @@ const AddCategoryModal = ({
                 </Text>
               </View>
             </View>
-
             <View
               style={{
                 flexDirection: "row",
@@ -754,15 +746,11 @@ const AddCategoryModal = ({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-
                 backgroundColor: `${selectedTheme.accent}10`,
                 borderRadius: 18,
-
                 padding: 14,
-
                 borderWidth: 1,
                 borderColor: `${selectedTheme.accent}25`,
-
                 marginBottom: 18,
               }}
             >
@@ -778,29 +766,16 @@ const AddCategoryModal = ({
               >
                 <Text style={{ fontSize: 24 }}>{catEmoji || "🏷️"}</Text>
               </LinearGradient>
-
               <View style={{ flex: 1 }}>
                 <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "800",
-                    color: "#0f172a",
-                  }}
+                  style={{ fontSize: 15, fontWeight: "800", color: "#0f172a" }}
                 >
                   {catName}
                 </Text>
-
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: "#64748b",
-                    marginTop: 2,
-                  }}
-                >
+                <Text style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
                   Ready to use in transactions
                 </Text>
               </View>
-
               <View
                 style={{
                   paddingHorizontal: 10,
@@ -810,11 +785,7 @@ const AddCategoryModal = ({
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "700",
-                    color: "white",
-                  }}
+                  style={{ fontSize: 10, fontWeight: "700", color: "white" }}
                 >
                   Ready
                 </Text>
@@ -822,159 +793,521 @@ const AddCategoryModal = ({
             </View>
           )}
 
-          {/* Submit */}
-          <Pressable
-            disabled={!canSubmit}
-            onPress={() => {
-              console.log({
-                name: catName,
-                icon: catEmoji || "🏷️",
-                theme: selectedTheme.id,
-              });
+          {/* Action buttons */}
+          {mode === "edit" ? (
+            <View style={{ gap: 10 }}>
+              {/* Save changes */}
+              <Pressable
+                disabled={!canSubmit}
+                onPress={() => {
+                  onSave({
+                    name: catName,
+                    icon: catEmoji || "🏷️",
+                    themeId: selectedTheme.id,
+                  });
+                  handleClose();
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 16,
+                  borderRadius: 18,
+                  backgroundColor: canSubmit
+                    ? selectedTheme.accent
+                    : `${selectedTheme.accent}40`,
+                  shadowColor: canSubmit ? selectedTheme.accent : "transparent",
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 5 },
+                  elevation: canSubmit ? 6 : 0,
+                }}
+              >
+                <Check
+                  size={18}
+                  color={canSubmit ? "white" : "#ffffff90"}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "800",
+                    color: canSubmit ? "white" : "#ffffff90",
+                  }}
+                >
+                  Simpan Perubahan
+                </Text>
+              </Pressable>
 
-              handleClose();
-            }}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-
-              paddingVertical: 16,
-
-              borderRadius: 18,
-
-              backgroundColor: canSubmit
-                ? selectedTheme.accent
-                : `${selectedTheme.accent}40`,
-
-              shadowColor: selectedTheme.accent,
-              shadowOpacity: canSubmit ? 0.4 : 0,
-              shadowRadius: 12,
-
-              shadowOffset: {
-                width: 0,
-                height: 5,
-              },
-
-              elevation: canSubmit ? 6 : 0,
-            }}
-          >
-            <Plus
-              size={18}
-              color={canSubmit ? "white" : "#ffffff90"}
-              strokeWidth={2.5}
-            />
-
-            <Text
+              {/* Delete */}
+              <Pressable
+                onPress={() => {
+                  handleClose();
+                  // slight delay so sheet closes before Alert shows
+                  setTimeout(() => {
+                    Alert.alert(
+                      "Hapus Kategori?",
+                      `Kategori "${catName}" akan dihapus secara permanen. Transaksi yang menggunakan kategori ini tidak akan terpengaruh.`,
+                      [
+                        { text: "Batal", style: "cancel" },
+                        {
+                          text: "Hapus",
+                          style: "destructive",
+                          onPress: () => onDelete?.(),
+                        },
+                      ],
+                    );
+                  }, 350);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 16,
+                  borderRadius: 18,
+                  backgroundColor: "#fef2f2",
+                  borderWidth: 1.5,
+                  borderColor: "#fecaca",
+                }}
+              >
+                <Trash2 size={18} color="#ef4444" strokeWidth={2.5} />
+                <Text
+                  style={{ fontSize: 15, fontWeight: "800", color: "#ef4444" }}
+                >
+                  Hapus Kategori
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            // Add mode — single save button
+            <Pressable
+              disabled={!canSubmit}
+              onPress={() => {
+                onSave({
+                  name: catName,
+                  icon: catEmoji || "🏷️",
+                  themeId: selectedTheme.id,
+                });
+                handleClose();
+              }}
               style={{
-                fontSize: 15,
-                fontWeight: "800",
-                color: canSubmit ? "white" : "#ffffff90",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 16,
+                borderRadius: 18,
+                backgroundColor: canSubmit
+                  ? selectedTheme.accent
+                  : `${selectedTheme.accent}40`,
+                shadowColor: canSubmit ? selectedTheme.accent : "transparent",
+                shadowOpacity: 0.4,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 5 },
+                elevation: canSubmit ? 6 : 0,
               }}
             >
-              {canSubmit
-                ? `Save "${catName}" Category`
-                : "Fill category details"}
-            </Text>
-          </Pressable>
+              <Plus
+                size={18}
+                color={canSubmit ? "white" : "#ffffff90"}
+                strokeWidth={2.5}
+              />
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: "800",
+                  color: canSubmit ? "white" : "#ffffff90",
+                }}
+              >
+                {canSubmit
+                  ? `Save "${catName}" Category`
+                  : "Fill category details"}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </Animated.View>
     </Modal>
   );
 };
 
+// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function ManageCategory() {
-  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  const MOCK_DATA = [
-    {
-      id: "1",
-      icon: "🍔",
-      label: "Food",
-      bg: "#fed7aa",
-    },
-    {
-      id: "2",
-      icon: "🎮",
-      label: "Gaming",
-      bg: "#ddd6fe",
-    },
-  ];
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [search, setSearch] = useState("");
+
+  // Sheet state
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetMode, setSheetMode] = useState<SheetMode>("add");
+  const [editingCategory, setEditingCategory] = useState<Category | undefined>(
+    undefined,
+  );
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories;
+    const q = search.toLowerCase();
+    return categories.filter((c) => c.label.toLowerCase().includes(q));
+  }, [categories, search]);
+
+  const openAdd = () => {
+    setEditingCategory(undefined);
+    setSheetMode("add");
+    setSheetVisible(true);
+  };
+
+  const openEdit = (cat: Category) => {
+    setEditingCategory(cat);
+    setSheetMode("edit");
+    setSheetVisible(true);
+  };
+
+  const handleSave = (data: {
+    name: string;
+    icon: string;
+    themeId: string;
+  }) => {
+    const theme =
+      CATEGORY_THEMES.find((t) => t.id === data.themeId) ?? CATEGORY_THEMES[0];
+    if (sheetMode === "add") {
+      const newCat: Category = {
+        id: Date.now().toString(),
+        label: data.name,
+        icon: data.icon,
+        bg: `${theme.accent}22`,
+        themeId: data.themeId,
+      };
+      setCategories((prev) => [...prev, newCat]);
+    } else if (editingCategory) {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === editingCategory.id
+            ? {
+                ...c,
+                label: data.name,
+                icon: data.icon,
+                bg: `${theme.accent}22`,
+                themeId: data.themeId,
+              }
+            : c,
+        ),
+      );
+    }
+  };
+
+  const handleDelete = () => {
+    if (editingCategory) {
+      setCategories((prev) => prev.filter((c) => c.id !== editingCategory.id));
+    }
+  };
 
   return (
-    <View className="flex-1 bg-white pt-14 px-6">
-      {/* Header */}
-      <View className="flex-row justify-between items-center mb-6">
-        <View>
-          <Text className="text-3xl font-extrabold text-slate-900">
-            Categories
-          </Text>
-
-          <Text className="text-slate-400 font-medium">
-            Manage your spending tags 🏷️
-          </Text>
-        </View>
-
-        <Pressable
-          onPress={() => setModalVisible(true)}
-          className="w-12 h-12 bg-slate-900 rounded-2xl items-center justify-center"
+    <>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
+        {/* ── Pinned green header ───────────────────────────────────────── */}
+        <LinearGradient
+          colors={["#00bf71", "#009e5f"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingTop: insets.top + 12,
+            paddingBottom: 20,
+            paddingHorizontal: 20,
+          }}
         >
-          <Plus color="white" size={22} strokeWidth={2.5} />
-        </Pressable>
-      </View>
-
-      {/* List */}
-      <FlatList
-        data={MOCK_DATA}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
+          {/* Top row */}
           <View
-            className="flex-row items-center p-4 rounded-3xl mb-3 border border-slate-100"
             style={{
-              backgroundColor: "#fafafa",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
             }}
           >
-            <View
+            <TouchableOpacity
+              onPress={() => router.back()}
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 999,
-                backgroundColor: item.bg,
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(255,255,255,0.2)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 24 }}>{item.icon}</Text>
-            </View>
+              <ChevronLeft size={20} color="white" strokeWidth={2.5} />
+            </TouchableOpacity>
 
-            <View className="flex-1 ml-4">
-              <Text className="text-base font-bold text-slate-900">
-                {item.label}
-              </Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>
+              Categories
+            </Text>
 
-              <Text className="text-xs text-slate-400 uppercase tracking-widest">
-                Tap to edit
-              </Text>
-            </View>
-
-            <ChevronLeft
-              size={18}
-              color="#cbd5e1"
+            {/* Add button */}
+            <TouchableOpacity
+              onPress={openAdd}
               style={{
-                transform: [{ rotate: "180deg" }],
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Plus size={20} color="white" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search bar */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.18)",
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 11,
+              gap: 10,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.25)",
+            }}
+          >
+            <Search size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search category"
+              placeholderTextColor="rgba(255,255,255,0.55)"
+              style={{
+                flex: 1,
+                fontSize: 14,
+                color: "white",
+                fontWeight: "500",
               }}
             />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch("")}>
+                <X size={16} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
+              </Pressable>
+            )}
           </View>
-        )}
-        ListFooterComponent={<View className="h-32" />}
-      />
+        </LinearGradient>
 
-      <AddCategoryModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        {/* ── Count strip ──────────────────────────────────────────────── */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            backgroundColor: "white",
+            borderBottomWidth: 1,
+            borderBottomColor: "#f3f4f6",
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#9ca3af", fontWeight: "600" }}>
+            {filteredCategories.length} categories
+          </Text>
+          <Pressable
+            onPress={openAdd}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              backgroundColor: "#f0fdf8",
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: "#bbf7d0",
+            }}
+          >
+            <Plus size={12} color="#00bf71" strokeWidth={2.5} />
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#00bf71" }}>
+              Add New
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* ── Category list ─────────────────────────────────────────────── */}
+        <FlatList
+          data={filteredCategories}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 110,
+            backgroundColor: "white",
+          }}
+          style={{ backgroundColor: "white" }}
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
+              <Text style={{ fontSize: 32 }}>🏷️</Text>
+              <Text
+                style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}
+              >
+                No categories found
+              </Text>
+              <Text style={{ fontSize: 13, color: "#9ca3af" }}>
+                Try a different search or add a new one
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const theme =
+              CATEGORY_THEMES.find((t) => t.id === item.themeId) ??
+              CATEGORY_THEMES[0];
+
+            return (
+              <Pressable
+                onPress={() => openEdit(item)}
+                style={({ pressed }) => ({
+                  marginHorizontal: 16,
+                  marginTop: 14,
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  transform: [{ scale: pressed ? 0.985 : 1 }],
+                })}
+              >
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 24,
+                    padding: 16,
+
+                    shadowColor: "#000",
+                    shadowOpacity: 0.05,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 3,
+
+                    borderWidth: 1,
+                    borderColor: "#f1f5f9",
+                  }}
+                >
+                  {/* top accent */}
+                  <LinearGradient
+                    colors={[`${theme.accent}22`, `${theme.accent}05`]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 5,
+                    }}
+                  />
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* icon */}
+                    <LinearGradient
+                      colors={theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: 58,
+                        height: 58,
+                        borderRadius: 20,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 16,
+
+                        shadowColor: theme.accent,
+                        shadowOpacity: 0.25,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 5 },
+                        elevation: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 28 }}>{item.icon}</Text>
+                    </LinearGradient>
+
+                    {/* text */}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "800",
+                          color: "#0f172a",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {item.label}
+                      </Text>
+
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 999,
+                            backgroundColor: theme.accent,
+                          }}
+                        />
+
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: "#94a3b8",
+                          }}
+                        >
+                          {theme.label} Theme
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* right action */}
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 16,
+                        backgroundColor: `${theme.accent}12`,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <ChevronRight
+                        size={18}
+                        color={theme.accent}
+                        strokeWidth={2.8}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
+
+      {/* ── Category Sheet (Add / Edit) ───────────────────────────────────── */}
+      <CategorySheet
+        visible={sheetVisible}
+        mode={sheetMode}
+        initialData={editingCategory}
+        onClose={() => setSheetVisible(false)}
+        onSave={handleSave}
+        onDelete={handleDelete}
       />
-    </View>
+    </>
   );
 }

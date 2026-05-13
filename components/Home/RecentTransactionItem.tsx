@@ -1,4 +1,5 @@
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
+import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import React from "react";
 import { Text, View } from "react-native";
 
@@ -15,6 +16,10 @@ const RecentTransactionItem = ({ item }: any) => {
     }).format(amount);
   };
   const categoryDetail = getCategoryDetail(item.categoryId);
+  // Di dalam component RecentTransactionItem
+  const { theme } = useWalletTheme(
+    (categoryDetail?.themeId as WalletThemeId) ?? "ocean",
+  );
   return (
     <View
       key={item.id}
@@ -22,7 +27,7 @@ const RecentTransactionItem = ({ item }: any) => {
     >
       <View className="flex flex-row items-center gap-3">
         <View
-          style={{ backgroundColor: categoryDetail?.bgColor }}
+          style={{ backgroundColor: theme.bgColor }}
           className="w-[45px] h-[45px] bg-[#FFF4E5] flex justify-center items-center rounded-full"
         >
           <Text className="text-md">{categoryDetail?.icon}</Text>
