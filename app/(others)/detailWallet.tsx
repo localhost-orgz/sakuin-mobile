@@ -11,8 +11,9 @@ import {
   TrendingUp,
   WalletMinimal,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   SectionList,
@@ -23,164 +24,31 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { apiRequest } from "@/utils/api"; //
 
-const MOCK_WALLETS = [
-  {
-    id: "w1",
-    bank: "BCA",
-    type: "Tabungan",
-    balance: "1.500.000",
-    transactions: "850.000",
-    themeId: "lavender",
-    accountNumber: "•••• •••• 4821",
-  },
-  {
-    id: "w2",
-    bank: "SeaBank",
-    type: "Digital",
-    balance: "3.250.000",
-    transactions: "1.200.000",
-    themeId: "green",
-    accountNumber: "•••• •••• 9034",
-  },
-  {
-    id: "w3",
-    bank: "BRI",
-    type: "Tabungan",
-    balance: "5.400.000",
-    transactions: "2.100.000",
-    themeId: "orange",
-    accountNumber: "•••• •••• 3317",
-  },
-];
-
-type TxItem = {
-  id: string;
-  title: string;
-  subtitle: string;
+// Sesuaikan tipe data dengan Response API
+type Transaction = {
+  _id: string;
+  name: string;
   amount: number;
+  type: "income" | "expense";
   date: string;
-  type: "in" | "out";
+  category_id: string | any;
 };
 
-const MOCK_TRANSACTIONS: Record<string, TxItem[]> = {
-  w1: [
-    {
-      id: "t1",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
-      amount: 50_000,
-      date: "2025-03-15",
-      type: "out",
-    },
-    {
-      id: "t2",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
-      amount: 50_000,
-      date: "2025-03-15",
-      type: "out",
-    },
-    {
-      id: "t3",
-      title: "Gaji Bulanan",
-      subtitle: "Income",
-      amount: 5_000_000,
-      date: "2025-03-14",
-      type: "in",
-    },
-    {
-      id: "t4",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
-      amount: 50_000,
-      date: "2025-03-14",
-      type: "out",
-    },
-    {
-      id: "t5",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
-      amount: 50_000,
-      date: "2025-03-13",
-      type: "out",
-    },
-    {
-      id: "t6",
-      title: "Transfer Masuk",
-      subtitle: "Dari SeaBank",
-      amount: 200_000,
-      date: "2025-03-13",
-      type: "in",
-    },
-    {
-      id: "t7",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
-      amount: 50_000,
-      date: "2025-03-12",
-      type: "out",
-    },
-    {
-      id: "t8",
-      title: "Belanja Online",
-      subtitle: "Shopping",
-      amount: 250_000,
-      date: "2025-03-11",
-      type: "out",
-    },
-    {
-      id: "t9",
-      title: "Refund Shopee",
-      subtitle: "Shopping",
-      amount: 120_000,
-      date: "2025-03-10",
-      type: "in",
-    },
-  ],
-  w2: [
-    {
-      id: "t10",
-      title: "Makan Siang",
-      subtitle: "Food & Drink",
-      amount: 35_000,
-      date: "2025-03-15",
-      type: "out",
-    },
-    {
-      id: "t11",
-      title: "Transfer Masuk",
-      subtitle: "Dari BCA",
-      amount: 300_000,
-      date: "2025-03-13",
-      type: "in",
-    },
-  ],
-  w3: [
-    {
-      id: "t12",
-      title: "Tagihan Listrik",
-      subtitle: "Utilities",
-      amount: 180_000,
-      date: "2025-03-15",
-      type: "out",
-    },
-    {
-      id: "t13",
-      title: "Gaji Freelance",
-      subtitle: "Income",
-      amount: 2_500_000,
-      date: "2025-03-10",
-      type: "in",
-    },
-  ],
+type WalletData = {
+  _id: string;
+  name: string;
+  balance: number;
+  color: string;
+  transactions: Transaction[];
+  currency_id: {
+    symbol: string;
+  };
 };
 
-const formatRupiah = (n: number) =>
-  "Rp" + new Intl.NumberFormat("id-ID").format(n);
-
-const parseBalance = (str: string): number =>
-  parseFloat(str.replace(/\./g, "").replace(",", ".")) || 0;
+const formatRupiah = (n: number, symbol: string = "Rp") =>
+  symbol + new Intl.NumberFormat("id-ID").format(n);
 
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString("id-ID", {
@@ -189,19 +57,20 @@ const formatDate = (dateStr: string) =>
     year: "numeric",
   });
 
-const groupByDate = (txs: TxItem[]) => {
-  const map: Record<string, TxItem[]> = {};
+const groupByDate = (txs: Transaction[]) => {
+  const map: Record<string, Transaction[]> = {};
   txs.forEach((tx) => {
-    if (!map[tx.date]) map[tx.date] = [];
-    map[tx.date].push(tx);
+    const dateKey = tx.date.split("T")[0];
+    if (!map[dateKey]) map[dateKey] = [];
+    map[dateKey].push(tx);
   });
   return Object.entries(map)
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, data]) => ({ title: formatDate(date), data }));
 };
 
-const TransactionItem = ({ item }: { item: TxItem }) => {
-  const isIn = item.type === "in";
+const TransactionItem = ({ item, symbol }: { item: Transaction; symbol: string }) => {
+  const isIn = item.type === "income";
   return (
     <View
       style={{
@@ -234,10 +103,10 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
 
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1f36" }}>
-          {item.title}
+          {item.name}
         </Text>
         <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-          {item.subtitle}
+          {isIn ? "Pemasukan" : "Pengeluaran"}
         </Text>
       </View>
 
@@ -250,7 +119,7 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
           }}
         >
           {isIn ? "+" : "-"}
-          {formatRupiah(item.amount)}
+          {formatRupiah(item.amount, symbol)}
         </Text>
       </View>
     </View>
@@ -260,59 +129,66 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
 export default function DetailWallet() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ walletId?: string }>();
+  const { walletId } = useLocalSearchParams<{ walletId: string }>(); // Terima _id dari card
 
-  const walletId = params.walletId ?? "w1";
-  const wallet = MOCK_WALLETS.find((w) => w.id === walletId) ?? MOCK_WALLETS[0];
-  const allTransactions = MOCK_TRANSACTIONS[wallet.id] ?? [];
-
+  const [loading, setLoading] = useState(true);
+  const [wallet, setWallet] = useState<WalletData | null>(null);
   const [search, setSearch] = useState("");
-  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch data dari API
+  const fetchWalletDetail = async () => {
+    try {
+      const response = await apiRequest(`/wallets/${walletId}`);
+      if (response.status === "success") {
+        setWallet(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch wallet:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWalletDetail();
+  }, [walletId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    fetchWalletDetail();
+  }, [walletId]);
 
-  const { theme } = useWalletTheme(wallet.themeId as WalletThemeId);
+  // Tema dinamis berdasarkan field 'color' dari API
+  const { theme } = useWalletTheme((wallet?.color as WalletThemeId) || "blue");
 
-  const totalIn = allTransactions
-    .filter((t) => t.type === "in")
-    .reduce((s, t) => s + t.amount, 0);
-  const totalOut = allTransactions
-    .filter((t) => t.type === "out")
-    .reduce((s, t) => s + t.amount, 0);
+  const totalIn = useMemo(() => 
+    wallet?.transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0) || 0, 
+  [wallet]);
+
+  const totalOut = useMemo(() => 
+    wallet?.transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0) || 0, 
+  [wallet]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return allTransactions;
+    const allTxs = wallet?.transactions || [];
+    if (!search.trim()) return allTxs;
     const q = search.toLowerCase();
-    return allTransactions.filter(
-      (tx) =>
-        tx.title.toLowerCase().includes(q) ||
-        tx.subtitle.toLowerCase().includes(q),
-    );
-  }, [search, allTransactions]);
+    return allTxs.filter((tx) => tx.name.toLowerCase().includes(q));
+  }, [search, wallet]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
 
-  const isDark =
-    theme.gradientColors[0].startsWith("#0") ||
-    theme.gradientColors[0].startsWith("#1") ||
-    theme.gradientColors[0].startsWith("#2") ||
-    theme.gradientColors[0].startsWith("#3");
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
 
-  const textPrimary = isDark ? "white" : theme.textColor;
-  const textMuted = isDark ? "rgba(255,255,255,0.35)" : `${theme.textColor}88`;
-  const iconBg = isDark ? "rgba(255,255,255,0.10)" : `${theme.textColor}18`;
-
-  // Blob color — on dark cards use white blobs, on light cards use the accent color
-  const blobColor = isDark
-    ? "rgba(255,255,255,0.07)"
-    : `${theme.shadowColor}22`;
-  const blobColorStrong = isDark
-    ? "rgba(255,255,255,0.11)"
-    : `${theme.shadowColor}38`;
+  if (!wallet) return null;
 
   const ListHeader = (
     <>
@@ -324,7 +200,6 @@ export default function DetailWallet() {
           backgroundColor: theme.accentColor,
         }}
       >
-        {/* Wallet icon + name */}
         <View style={{ alignItems: "center", gap: 6, paddingTop: 20 }}>
           <View
             style={{
@@ -337,87 +212,42 @@ export default function DetailWallet() {
               marginBottom: 2,
             }}
           >
-            <Text style={{ fontSize: 26, fontWeight: "800", color: "white" }}>
-              <WalletMinimal strokeWidth={2.5} color="white" />
-            </Text>
+            <WalletMinimal strokeWidth={2.5} color="white" size={30} />
           </View>
 
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "700",
-              color: "white",
-              letterSpacing: -0.4,
-            }}
-          >
-            {wallet.bank}
+          <Text style={{ fontSize: 22, fontWeight: "700", color: "white", letterSpacing: -0.4 }}>
+            {wallet.name}
           </Text>
 
-          {/* Balance */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 6,
-            }}
-          >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
             <View className="flex flex-row items-end gap-1">
               <Text className="text-white text-lg font-semibold mb-0.5">
-                Rp
+                {wallet.currency_id.symbol}
               </Text>
-              <Text
-                style={{
-                  fontSize: 30,
-                  fontWeight: "800",
-                  color: "white",
-                  letterSpacing: -0.5,
-                }}
-              >
-                {isBalanceVisible ? `${wallet.balance}` : "Rp •••••••••"}
+              <Text style={{ fontSize: 30, fontWeight: "800", color: "white", letterSpacing: -0.5 }}>
+                {new Intl.NumberFormat("id-ID").format(wallet.balance)}
               </Text>
             </View>
           </View>
 
-          {/* Income / Expense summary chips */}
           <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: "rgba(255,255,255,0.18)",
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 20,
-              }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.18)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}>
               <TrendingUp size={13} color="white" strokeWidth={2.5} />
               <Text style={{ fontSize: 12, fontWeight: "700", color: "white" }}>
-                {formatRupiah(totalIn)}
+                {formatRupiah(totalIn, wallet.currency_id.symbol)}
               </Text>
             </View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: "rgba(255,255,255,0.18)",
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 20,
-              }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.18)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}>
               <TrendingDown size={13} color="white" strokeWidth={2.5} />
               <Text style={{ fontSize: 12, fontWeight: "700", color: "white" }}>
-                {formatRupiah(totalOut)}
+                {formatRupiah(totalOut, wallet.currency_id.symbol)}
               </Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Action buttons */}
+      {/* Tombol Action tetap sama */}
       <View
         style={{
           marginHorizontal: 20,
@@ -435,74 +265,23 @@ export default function DetailWallet() {
           elevation: 6,
         }}
       >
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={{ flex: 1, alignItems: "center", gap: 8 }}
-        >
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: theme.bgColor ?? "#f0fdf8",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Plus
-              size={22}
-              color={theme.accentColor ?? "#00bf71"}
-              strokeWidth={2.5}
-            />
+        <TouchableOpacity style={{ flex: 1, alignItems: "center", gap: 8 }}>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.bgColor, alignItems: "center", justifyContent: "center" }}>
+            <Plus size={22} color={theme.accentColor} strokeWidth={2.5} />
           </View>
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "600",
-              color: "#374151",
-              textAlign: "center",
-            }}
-          >
-            Tambah{"\n"}Uang
-          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#374151", textAlign: "center" }}>Tambah{"\n"}Uang</Text>
         </TouchableOpacity>
 
         <View style={{ width: 1, backgroundColor: "#f3f4f6" }} />
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={{ flex: 1, alignItems: "center", gap: 8 }}
-        >
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: theme.bgColor ?? "#f0fdf8",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ArrowLeftRight
-              size={20}
-              color={theme.accentColor ?? "#00bf71"}
-              strokeWidth={2.5}
-            />
+        <TouchableOpacity style={{ flex: 1, alignItems: "center", gap: 8 }}>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.bgColor, alignItems: "center", justifyContent: "center" }}>
+            <ArrowLeftRight size={20} color={theme.accentColor} strokeWidth={2.5} />
           </View>
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "600",
-              color: "#374151",
-              textAlign: "center",
-            }}
-          >
-            Pindahkan{"\n"}Uang
-          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#374151", textAlign: "center" }}>Pindahkan{"\n"}Uang</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View
         style={{
           marginHorizontal: 20,
@@ -534,95 +313,34 @@ export default function DetailWallet() {
     <>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
-        {/* ── PINNED TOP BAR (back button + title only) ─────────────────── */}
-        <View
-          style={{
-            paddingTop: insets.top + 12,
-            paddingBottom: 12,
-            paddingHorizontal: 20,
-            backgroundColor: theme.accentColor,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+        <View style={{ paddingTop: insets.top + 12, paddingBottom: 12, paddingHorizontal: 20, backgroundColor: theme.accentColor }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
               <ChevronLeft size={20} color="white" strokeWidth={2.5} />
             </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>
-              Wallet Detail
-            </Text>
-            <Pressable>
-              <Ellipsis color={"white"} />
-            </Pressable>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>Wallet Detail</Text>
+            <Pressable><Ellipsis color={"white"} /></Pressable>
           </View>
         </View>
 
-        {/* ── SCROLLABLE CONTENT (wallet card + actions + search + list) ── */}
         <SectionList
           sections={sections}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id}
           showsVerticalScrollIndicator={false}
-          style={{ backgroundColor: theme.gradientColors[0] }}
-          contentContainerStyle={{
-            paddingBottom: insets.bottom + 110,
-            backgroundColor: "#f5f6fa",
-          }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 110, backgroundColor: "#f5f6fa" }}
           ListHeaderComponent={ListHeader}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="white"
-              colors={["white"]}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="white" />}
           ListEmptyComponent={
             <View style={{ alignItems: "center", paddingTop: 40 }}>
-              <Text style={{ fontSize: 14, color: "#9ca3af" }}>
-                {search
-                  ? "Transaksi tidak ditemukan 🔍"
-                  : "Belum ada transaksi"}
-              </Text>
+              <Text style={{ fontSize: 14, color: "#9ca3af" }}>{search ? "Transaksi tidak ditemukan 🔍" : "Belum ada transaksi"}</Text>
             </View>
           }
           renderSectionHeader={({ section: { title } }) => (
-            <View
-              style={{
-                backgroundColor: "#f5f6fa",
-                paddingHorizontal: 20,
-                paddingVertical: 8,
-                marginTop: 14,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  color: "#9ca3af",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {title}
-              </Text>
+            <View style={{ backgroundColor: "#f5f6fa", paddingHorizontal: 20, paddingVertical: 8, marginTop: 14 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
             </View>
           )}
-          renderItem={({ item }) => <TransactionItem item={item} />}
+          renderItem={({ item }) => <TransactionItem item={item} symbol={wallet.currency_id.symbol} />}
         />
       </View>
     </>

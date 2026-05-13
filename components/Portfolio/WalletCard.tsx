@@ -43,7 +43,7 @@ const WalletCard = ({
   };
 
   return (
-    <Link href={"/(others)/detailWallet"} asChild>
+    <Link href={{ pathname: "/(others)/detailWallet", params: { walletId: item._id } }} asChild>
       <Pressable
         style={{
           shadowColor: "#000",
