@@ -1,7 +1,9 @@
 import { router } from "expo-router";
 import { Camera, ChevronLeft, Mail, User } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,17 +14,83 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { apiRequest } from "@/utils/api";
 
 const EditProfile = () => {
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState("User");
-  const [email, setEmail] = useState("blablabla@gmail.com");
+  
+  // State menyimpan objek user sesuai permintaan
+  const [user, setUser] = useState({
+    name: "",
+    email: "",
+    avatar_url: ""
+  });
+  
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [avatarError, setAvatarError] = useState(false);
+
+  // Ambil data profil saat ini (GET /auth/profile)
+  useEffect(() => {
+    const fetchCurrentProfile = async () => {
+      try {
+        const res = await apiRequest("/auth/profile", { method: "GET" });
+        if (res.status === "success" && res.data) {
+          setUser({
+            name: res.data.name || "",
+            email: res.data.email || "",
+            avatar_url: res.data.avatar_url || ""
+          });
+        }
+      } catch (err) {
+        Alert.alert("Error", "Gagal mengambil data profil");
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchCurrentProfile();
+  }, []);
+
+  // Simpan perubahan profil (PUT /auth/profile)
+  const handleSave = async () => {
+    if (!user.name) {
+      return Alert.alert("Error", "Nama tidak boleh kosong");
+    }
+
+    try {
+      setLoading(true);
+      // Menggunakan endpoint /auth/profile sesuai log API terbaru
+      const res = await apiRequest("/auth/profile", {
+        method: "PUT",
+        body: { 
+          name: user.name 
+        },
+      });
+
+      if (res.status === "success") {
+        Alert.alert("Sukses", "Profil berhasil diperbarui", [
+          { text: "OK", onPress: () => router.back() }
+        ]);
+      }
+    } catch (err: any) {
+      Alert.alert("Error", "Gagal memperbarui profil. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fetching) {
+    return (
+      <View className="flex-1 justify-center items-center bg-[#f8f9fd]">
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#f8f9fd]" // Sedikit lebih terang biar shadow kontras
+      className="flex-1 bg-[#f8f9fd]"
     >
       {/* ─── HEADER SECTION ─────────────────────────────────────────── */}
       <View
@@ -37,28 +105,25 @@ const EditProfile = () => {
             <ChevronLeft size={22} color="white" />
           </TouchableOpacity>
           <Text className="text-white text-xl font-bold">Edit Profile</Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-white/0"
-          >
-            {/* <Check size={22} color="white" /> */}
-          </TouchableOpacity>
+          <View className="w-10" />
         </View>
 
         {/* ─── AVATAR EDIT SECTION ───────────────────────────────────── */}
         <View className="items-center">
           <View className="relative shadow-2xl shadow-black/30">
             <View className="w-32 h-32 rounded-full bg-gray-200 overflow-hidden border-[3px] border-white">
-              {!avatarError ? (
+              {user.avatar_url && !avatarError ? (
                 <Image
-                  source={require("../../../assets/images/profile.jpg")}
+                  source={{ uri: user.avatar_url }}
                   className="w-full h-full"
                   resizeMode="cover"
                   onError={() => setAvatarError(true)}
                 />
               ) : (
                 <View className="w-full h-full bg-gray-400 items-center justify-center">
-                  <Text className="text-4xl font-bold text-white">U</Text>
+                  <Text className="text-4xl font-bold text-white">
+                    {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                  </Text>
                 </View>
               )}
             </View>
@@ -90,15 +155,13 @@ const EditProfile = () => {
               </Text>
             </View>
             <TextInput
-              value={name}
-              onChangeText={setName}
+              value={user.name}
+              onChangeText={(text) => setUser({ ...user, name: text })}
               placeholder="Masukkan nama kamu"
-              placeholderTextColor="#a0a0a0"
-              className="bg-white px-5 py-4 rounded-2xl text-gray-800 font-semibold shadow-sm shadow-black/5 border border-gray-50"
-              style={{ elevation: 2 }} // Khusus Android biar dapet shadow halus
+              className="bg-white px-5 py-4 rounded-2xl text-gray-800 font-semibold border border-gray-50"
             />
           </View>
-          {/* Input Email */}
+
           <View>
             <View className="flex-row items-center mb-3 ml-1">
               <Mail size={14} color="#00bf71" />
@@ -107,28 +170,29 @@ const EditProfile = () => {
               </Text>
             </View>
             <TextInput
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholder="nama@email.com"
-              placeholderTextColor="#a0a0a0"
-              className="bg-white px-5 py-4 rounded-2xl text-gray-800 font-semibold shadow-sm shadow-black/5 border border-gray-50"
-              style={{ elevation: 2 }}
+              editable={false}
+              value={user.email}
+              className="bg-gray-100 px-5 py-4 rounded-2xl text-gray-400 font-semibold border border-gray-200"
             />
+            <Text className="text-[10px] text-gray-400 mt-2 ml-1 italic">
+              * Email tidak dapat diubah
+            </Text>
           </View>
         </View>
 
-        {/* ─── SAVE BUTTON ──────────────────────────────────────────── */}
         <TouchableOpacity
           activeOpacity={0.8}
-          className="bg-[#00bf71] mt-12 py-5 rounded-2xl items-center shadow-lg shadow-[#00bf71]/40"
-          style={{ elevation: 8 }}
-          onPress={() => router.back()}
+          className={`mt-12 py-5 rounded-2xl items-center shadow-lg ${loading ? 'bg-gray-400' : 'bg-[#00bf71] shadow-[#00bf71]/40'}`}
+          onPress={handleSave}
+          disabled={loading}
         >
-          <Text className="text-white font-bold text-lg tracking-wide">
-            Simpan Perubahan
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-bold text-lg tracking-wide">
+              Simpan Perubahan
+            </Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
