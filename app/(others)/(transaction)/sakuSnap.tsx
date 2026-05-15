@@ -23,7 +23,6 @@ import {
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -569,16 +568,23 @@ export default function SakuSnap() {
   }, [isCapturing, timerSeconds]);
 
   // ── Save to gallery ─────────────────────────────────────────────────────────
+  // Inside SakuSnap.tsx
+
   const savePhoto = async () => {
     if (!photoUri) return;
     try {
-      if (!mediaPerm?.granted) await requestMediaPerm();
-      await MediaLibrary.saveToLibraryAsync(photoUri);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Saved!", "Photo saved to your gallery.", [{ text: "OK" }]);
-      setPhotoUri(null);
+      // Navigasi ke SakuLoading sambil bawa URI fotonya 🚀
+      router.push({
+        pathname: "/(others)/(transaction)/sakuSnapLoading",
+        params: { imageUri: photoUri },
+      });
+
+      // Optional: Tetap simpan ke gallery kalau kamu mau
+      if (mediaPerm?.granted) {
+        await MediaLibrary.saveToLibraryAsync(photoUri);
+      }
     } catch (e) {
-      Alert.alert("Error", "Could not save photo.");
+      console.error("Navigation error", e);
     }
   };
 
