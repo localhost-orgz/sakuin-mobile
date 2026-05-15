@@ -380,6 +380,10 @@ export default function EditTransaction() {
                 <TextInput
                   value={description}
                   onChangeText={setDescription}
+                  multiline={true}
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  style={{ minHeight: 100, paddingTop: 12 }}
                   placeholder="Masukkan Deskripsi"
                   placeholderTextColor="#9CA3AF"
                   className="text-black px-4 py-3"

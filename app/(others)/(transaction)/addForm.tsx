@@ -243,6 +243,10 @@ export default function AddTransaction() {
               <View className="border border-gray-300 rounded-lg">
                 <TextInput
                   placeholder="Masukkan Deskripsi"
+                  multiline={true}
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  style={{ minHeight: 100, paddingTop: 12 }}
                   placeholderTextColor="#9CA3AF"
                   className="text-black px-4 py-3"
                 />
