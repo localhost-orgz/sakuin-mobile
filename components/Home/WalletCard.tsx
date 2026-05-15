@@ -1,4 +1,4 @@
-import useWalletTheme from "@/hooks/useWalletTheme";
+import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Eye, EyeOff, WalletMinimal } from "lucide-react-native";
 import { Dimensions, Text, TouchableOpacity, View } from "react-native";
@@ -7,7 +7,11 @@ const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
 
 const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
-  const { theme } = useWalletTheme(item.themeId);
+  // const { theme } = useWalletTheme(item.themeId);
+
+  const { theme } = useWalletTheme(
+    (item.color.toLowerCase() as WalletThemeId) || "ocean",
+  );
 
   const isDark =
     theme.gradientColors[0].startsWith("#0") ||
@@ -27,13 +31,17 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
     ? "rgba(255,255,255,0.11)"
     : `${theme.shadowColor}38`;
 
-    const transactionList = Array.isArray(item.transactions) ? item.transactions : [];
-    const totalExpenseAmount = transactionList
+  const transactionList = Array.isArray(item.transactions)
+    ? item.transactions
+    : [];
+  const totalExpenseAmount = transactionList
     .filter((tx: any) => tx.type === "expense")
     .reduce((sum: number, tx: any) => sum + tx.amount, 0);
-    const formattedExpense = new Intl.NumberFormat("id-ID").format(totalExpenseAmount);
+  const formattedExpense = new Intl.NumberFormat("id-ID").format(
+    totalExpenseAmount,
+  );
 
-    const formattedBalance = new Intl.NumberFormat("id-ID").format(item.balance);
+  const formattedBalance = new Intl.NumberFormat("id-ID").format(item.balance);
 
   return (
     <View style={{ width: CARD_WIDTH, height: 180 }}>
