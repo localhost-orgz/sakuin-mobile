@@ -6,7 +6,6 @@
  * as a ListHeader, so they scroll along with all other content.
  */
 
-import { WALLET_LIST } from "@/constants/walletList";
 import { useRef, useState } from "react";
 import {
   Dimensions,
@@ -106,9 +105,11 @@ export const PinnedGreeting = ({ userData }: UserProps) => {
 export const ScrollableTopContent = ({
   isBalanceShow,
   setIsBalanceShow,
+  wallets = [],
 }: {
   isBalanceShow: boolean;
   setIsBalanceShow: (v: boolean) => void;
+  wallets: any[];
 }) => {
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -132,8 +133,8 @@ export const ScrollableTopContent = ({
       {/* Wallet carousel */}
       <FlatList
         ref={flatListRef}
-        data={WALLET_LIST}
-        keyExtractor={(item) => item.id}
+        data={wallets}
+        keyExtractor={(item) => item._id}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -161,9 +162,9 @@ export const ScrollableTopContent = ({
           marginTop: 14,
         }}
       >
-        {WALLET_LIST.map((_, index) => (
+        {wallets.map((item: any, index: number) => (
           <TouchableOpacity
-            key={index}
+            key={item._id}
             onPress={() => {
               flatListRef.current?.scrollToIndex({ index, animated: true });
             }}
@@ -196,6 +197,7 @@ export default function TopSection({ userData }: UserProps) {
       <ScrollableTopContent
         isBalanceShow={isBalanceShow}
         setIsBalanceShow={setIsBalanceShow}
+        wallets={[]}
       />
     </>
   );

@@ -3,7 +3,6 @@ import GoalCardsSection from "@/components/Portfolio/GoalCardsSection";
 import TotalBalance from "@/components/Portfolio/TotalBalance";
 import WalletCardsSection from "@/components/Portfolio/WalletCardsSection";
 import { CURRENT_GOALS } from "@/constants/goalsList";
-import { WALLET_LIST } from "@/constants/walletList";
 import { apiRequest } from "@/utils/api";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";

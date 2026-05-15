@@ -27,6 +27,14 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
     ? "rgba(255,255,255,0.11)"
     : `${theme.shadowColor}38`;
 
+    const transactionList = Array.isArray(item.transactions) ? item.transactions : [];
+    const totalExpenseAmount = transactionList
+    .filter((tx: any) => tx.type === "expense")
+    .reduce((sum: number, tx: any) => sum + tx.amount, 0);
+    const formattedExpense = new Intl.NumberFormat("id-ID").format(totalExpenseAmount);
+
+    const formattedBalance = new Intl.NumberFormat("id-ID").format(item.balance);
+
   return (
     <View style={{ width: CARD_WIDTH, height: 180 }}>
       <LinearGradient
@@ -113,9 +121,9 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
             <Text
               style={{ color: textPrimary, fontWeight: "700", fontSize: 20 }}
             >
-              {item.bank}
+              {item.name}
             </Text>
-            <Text style={{ color: textMuted, fontSize: 13 }}>{item.type}</Text>
+            <Text style={{ color: textMuted, fontSize: 13 }}>Wallet</Text>
           </View>
         </View>
 
@@ -154,7 +162,7 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
                     fontWeight: "700",
                   }}
                 >
-                  {isBalanceShow ? item.balance : "•••••••••"}
+                  {isBalanceShow ? formattedBalance : "•••••••••"}
                 </Text>
               </View>
               <TouchableOpacity
@@ -172,7 +180,7 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
 
           {/* Transactions */}
           <Text style={{ fontSize: 12, color: textMuted, marginTop: 8 }}>
-            {`Total Transactions This Month: Rp${isBalanceShow ? item.transactions : "•••••"}`}
+            {`Total Transactions This Month: Rp${isBalanceShow ? formattedExpense : "•••••"}`}
           </Text>
         </View>
       </LinearGradient>

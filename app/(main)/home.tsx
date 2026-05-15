@@ -31,6 +31,7 @@ export default function Home() {
   const [isBalanceShow, setIsBalanceShow] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
+  const [wallets, setWallets] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [snapModalVisible, setSnapModalVisible] = useState(true);
 
@@ -51,14 +52,38 @@ export default function Home() {
     }
   };
 
+  const fetchWallets = async () => {
+    try {
+      setLoading(true);
+      const res = await apiRequest("/wallets", { method: "GET" }); //
+      if (res.status === "success" && res.data) {
+        setWallets(res.data); //
+      }
+    } catch (err) {
+      console.error("Failed to fetch wallets:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initHomeData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([fetchUser(), fetchWallets()]); // Jalankan fetch paralel
+    } catch (err) {
+      console.error("Error loading home data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchUser();
+    initHomeData();
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchUser();
-    // Replace with your real data fetch (re-fetch wallet balances, transactions, etc.)
+    await Promise.all([fetchUser(), fetchWallets()]);
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
@@ -99,6 +124,7 @@ export default function Home() {
         <ScrollableTopContent
           isBalanceShow={isBalanceShow}
           setIsBalanceShow={setIsBalanceShow}
+          wallets={wallets}
         />
 
         {/* ── Content sections ── */}
