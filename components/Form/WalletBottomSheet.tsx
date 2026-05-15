@@ -1,19 +1,59 @@
-import { WALLET_LIST } from "@/constants/walletList";
-import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import { WalletThemeId } from "@/hooks/useWalletTheme"; // 1. Import tipe warna
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import React, { forwardRef, useMemo } from "react";
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import WalletItem from "./WalletItem";
 
+// 2. Samakan interface data Wallet sesuai response API
+interface CurrencyId {
+  _id: string;
+  name: string;
+  symbol: string;
+  code: string;
+  flag: string;
+  __v: number;
+}
+
+interface Wallet {
+  _id: string;
+  user_id: string;
+  currency_id: CurrencyId;
+  wallet_id: string;
+  name: string;
+  color: WalletThemeId; 
+  balance: number;
+  __v: number;
+  transactions: any[];
+}
+
 interface Props {
-  selectedWallet: any;
-  onSelect: (item: any) => void;
+  wallets: Wallet[]; // 3. Ganti data dari static list ke dynamic array hasil API
+  selectedWallet: Wallet | null;
+  onSelect: (item: Wallet) => void;
 }
 
 const WalletBottomSheet = forwardRef<BottomSheet, Props>(
-  ({ selectedWallet, onSelect }, ref) => {
+  ({ wallets, selectedWallet, onSelect }, ref) => {
     const snapPoints = useMemo(() => ["50%"], []);
     const insets = useSafeAreaInsets();
+
+    // 4. Mempertahankan backdropComponent yang mulus dari After
+    const renderBackdrop = React.useCallback(
+      (props: any) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.5}
+        />
+      ),
+      []
+    );
+
+    const formatCurrency = (amount: number, symbol: string = "Rp") => {
+      return `${symbol} ${amount.toLocaleString("id-ID")}`;
+    };
 
     return (
       <BottomSheet
@@ -21,6 +61,7 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        backdropComponent={renderBackdrop} // Ditambahkan agar backdrop gelap bekerja
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
@@ -41,8 +82,8 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
         }}
       >
         <BottomSheetFlatList
-          data={WALLET_LIST}
-          keyExtractor={(item: any) => item.id}
+          data={wallets} // Menggunakan data dinamis hasil fetch
+          keyExtractor={(item: Wallet) => item._id} // Menggunakan item._id dari MongoDB API
           stickyHeaderIndices={[0]}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 40,
@@ -56,12 +97,15 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
               </View>
             </View>
           }
-          renderItem={({ item }: any) => {
+          renderItem={({ item }: { item: Wallet }) => {
+            const isSelected = selectedWallet?._id === item._id; // Logika pencocokan ID dari After
+
             return (
               <WalletItem
                 item={item}
-                selectedWallet={selectedWallet}
+                isSelected={isSelected} // Kirim boolean penanda aktif ke WalletItem
                 onSelect={onSelect}
+                formatCurrency={formatCurrency} // Teruskan fungsi format mata uang ke dalam row item
               />
             );
           }}
@@ -71,4 +115,5 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
   },
 );
 
+WalletBottomSheet.displayName = "WalletBottomSheet";
 export default WalletBottomSheet;

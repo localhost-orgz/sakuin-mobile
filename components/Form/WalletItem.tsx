@@ -2,10 +2,10 @@ import useWalletTheme from "@/hooks/useWalletTheme";
 import { WalletCards } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
-// Buat komponen terpisah di luar WalletBottomSheet
-const WalletItem = ({ item, selectedWallet, onSelect }: any) => {
-  const { theme } = useWalletTheme(item.themeId);
-  const isSelected = selectedWallet.id === item.id;
+// Gunakan parameter destructuring dari before, namun ganti selectedWallet menjadi isSelected & tambahkan formatCurrency
+const WalletItem = ({ item, isSelected, onSelect, formatCurrency }: any) => {
+  // Ambil warna tema berdasarkan properti data API (item.color)
+  const { theme } = useWalletTheme(item.color);
 
   return (
     <Pressable onPress={() => onSelect(item)}>
@@ -23,10 +23,18 @@ const WalletItem = ({ item, selectedWallet, onSelect }: any) => {
           >
             <WalletCards color={theme.textColor} size={18} />
           </View>
-          <Text className="text-base font-semibold">{item.bank}</Text>
+          
+          {/* Mengubah layout teks menjadi susunan kolom (flex-col) agar Saldo bisa diselipkan di bawah nama bank */}
+          <View className="flex flex-col">
+            <Text className="text-base font-semibold">{item.name}</Text>
+            {/* Menampilkan total saldo dinamis dari API */}
+            <Text style={{ color: theme.textColor }} className="text-xs font-medium">
+              {formatCurrency ? formatCurrency(item.balance, item.currency_id?.symbol) : item.balance}
+            </Text>
+          </View>
         </View>
 
-        {/* Radio button */}
+        {/* Radio button (dipertahankan 100% dari style before) */}
         <View
           style={{ borderColor: isSelected ? "#00bf71" : "#d1d5db" }}
           className="h-5 w-5 border-2 rounded-full items-center justify-center"
