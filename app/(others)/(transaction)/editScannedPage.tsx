@@ -4,8 +4,6 @@ import {
   Calendar,
   ChevronLeft,
   DollarSign,
-  Plus,
-  Save,
   Trash2,
   Utensils,
 } from "lucide-react-native";
@@ -14,15 +12,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-// Dummy Constant dari kamu
+// Dummy Constant
 const MOCK_STRUK_DATA = {
   data: {
     category_id: "69a99efab5420796db171e00",
@@ -36,7 +35,12 @@ const MOCK_STRUK_DATA = {
       { name: "Puding Isi 1", quantity: 2, price: 8000, total: 16000 },
       { name: "Goreng goreng", quantity: 2, price: 15000, total: 30000 },
       { name: "Mineral d", quantity: 2, price: 5000, total: 10000 },
-      { name: "Mandi (Manis Dingin)", quantity: 2, price: 8000, total: 16000 },
+      {
+        name: "Mandi (Manis Dingin)",
+        quantity: 2,
+        price: 8000,
+        total: 16000,
+      },
       { name: "Goreng goreng", quantity: 1, price: 15000, total: 15000 },
     ],
   },
@@ -45,210 +49,260 @@ const MOCK_STRUK_DATA = {
 export default function SakuEdit() {
   const router = useRouter();
 
-  // State yang udah terisi data awal 📝
   const [formData, setFormData] = useState(MOCK_STRUK_DATA.data);
 
-  // Fungsi buat update info item satuan
   const updateItem = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
-    newItems[index] = { ...newItems[index], [field]: value };
 
-    // Auto-calculate total item
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+    };
+
+    // Auto calculate
     if (field === "quantity" || field === "price") {
-      const q = field === "quantity" ? value : newItems[index].quantity;
-      const p = field === "price" ? value : newItems[index].price;
-      newItems[index].total = Number(q) * Number(p);
+      const q =
+        field === "quantity" ? Number(value) : Number(newItems[index].quantity);
+
+      const p =
+        field === "price" ? Number(value) : Number(newItems[index].price);
+
+      newItems[index].total = q * p;
     }
 
-    setFormData({ ...formData, items: newItems });
+    setFormData({
+      ...formData,
+      items: newItems,
+    });
   };
 
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
-    setFormData({ ...formData, items: newItems });
+
+    setFormData({
+      ...formData,
+      items: newItems,
+    });
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0a0a0a]">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        {/* Header */}
-        <View className="flex flex-row items-center justify-between px-5 py-4 border-b border-white/5">
-          <View className="flex-row items-center">
+    <>
+      {/* Top Safe Area */}
+      <SafeAreaView edges={["top"]} className="bg-[#00bf71]" />
+
+      {/* Main Screen */}
+      <SafeAreaView edges={["bottom"]} className="flex-1 bg-[#f7f8fa]">
+        <StatusBar backgroundColor="#00bf71" barStyle="light-content" />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          {/* Header */}
+          <View className="bg-[#00bf71] px-5 py-4 flex-row items-center">
             <TouchableOpacity
               onPress={() => router.back()}
-              className="w-10 h-10 bg-gray-900 rounded-full items-center justify-center border border-white/10"
+              className="w-10 h-10 bg-white/20 rounded-full items-center justify-center mr-3"
             >
               <ChevronLeft size={20} color="white" />
             </TouchableOpacity>
-            <Text className="text-white text-lg font-bold ml-4">
-              Edit Data Struk ✏️
+
+            <Text className="text-white text-lg font-bold">
+              Edit Data Struk
             </Text>
           </View>
-        </View>
 
-        <ScrollView
-          className="flex-1 px-5 pt-6"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Section 1: Info Utama 🔎 */}
-          <View className="mb-8">
-            <Text className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">
-              Informasi Umum
-            </Text>
-
-            {/* Amount Input */}
-            <View className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
-              <View className="flex-row items-center mb-2">
-                <DollarSign size={16} color="#00bf71" />
-                <Text className="text-gray-400 text-xs ml-2">
-                  Total Pengeluaran
+          {/* Content */}
+          <View className="flex-1 bg-[#f7f8fa] rounded-t-[32px] overflow-hidden">
+            <ScrollView
+              className="flex-1 px-5 pt-6"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Informasi Umum */}
+              <View className="mb-8">
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">
+                  Informasi Umum
                 </Text>
-              </View>
-              <TextInput
-                value={String(formData.amount)}
-                onChangeText={(val) =>
-                  setFormData({ ...formData, amount: Number(val) })
-                }
-                keyboardType="numeric"
-                className="text-white text-2xl font-bold p-0"
-                placeholderTextColor="#444"
-              />
-            </View>
 
-            <View className="flex-row gap-3">
-              {/* Category (UI Mockup) */}
-              <TouchableOpacity className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/10">
-                <View className="flex-row items-center mb-1">
-                  <Utensils size={14} color="#00bf71" />
-                  <Text className="text-gray-400 text-[10px] ml-2">
-                    Kategori
-                  </Text>
-                </View>
-                <Text className="text-white font-semibold text-sm">
-                  {formData.category_name}
-                </Text>
-              </TouchableOpacity>
+                {/* Amount */}
+                <View className="bg-white rounded-lg p-5 mb-4 border border-gray-200">
+                  <View className="flex-row items-center mb-2">
+                    <DollarSign size={16} color="#00bf71" />
 
-              {/* Date (UI Mockup) */}
-              <TouchableOpacity className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/10">
-                <View className="flex-row items-center mb-1">
-                  <Calendar size={14} color="#00bf71" />
-                  <Text className="text-gray-400 text-[10px] ml-2">
-                    Tanggal
-                  </Text>
-                </View>
-                <Text className="text-white font-semibold text-sm">
-                  {formData.date}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                    <Text className="text-gray-500 text-xs ml-2">
+                      Total Pengeluaran
+                    </Text>
+                  </View>
 
-          {/* Section 2: Daftar Item ✅ */}
-          <View className="mb-8">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                Detail Item
-              </Text>
-              <TouchableOpacity className="flex-row items-center">
-                <Plus size={14} color="#00bf71" />
-                <Text className="text-[#00bf71] text-xs font-bold ml-1">
-                  Tambah
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {formData.items.map((item, index) => (
-              <View
-                key={index}
-                className="bg-white/5 rounded-2xl p-4 mb-3 border border-white/5"
-              >
-                <View className="flex-row justify-between items-start mb-3">
                   <TextInput
-                    value={item.name}
-                    onChangeText={(val) => updateItem(index, "name", val)}
-                    className="text-white font-bold text-sm flex-1 mr-2 p-0"
-                    placeholder="Nama Item"
+                    value={String(formData.amount)}
+                    onChangeText={(val) =>
+                      setFormData({
+                        ...formData,
+                        amount: Number(val),
+                      })
+                    }
+                    keyboardType="numeric"
+                    className="text-[#111827] text-2xl font-bold p-0"
+                    placeholderTextColor="#9ca3af"
                   />
-                  <TouchableOpacity onPress={() => removeItem(index)}>
-                    <Trash2 size={16} color="#ef4444" />
+                </View>
+
+                <View className="flex-row gap-3">
+                  {/* Category */}
+                  <TouchableOpacity className="flex-1 bg-white rounded-lg p-4 border border-gray-200">
+                    <View className="flex-row items-center mb-1">
+                      <Utensils size={14} color="#00bf71" />
+
+                      <Text className="text-gray-500 text-[10px] ml-2">
+                        Kategori
+                      </Text>
+                    </View>
+
+                    <Text className="text-[#111827] font-semibold text-sm">
+                      {formData.category_name}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Date */}
+                  <TouchableOpacity className="flex-1 bg-white rounded-lg p-4 border border-gray-200">
+                    <View className="flex-row items-center mb-1">
+                      <Calendar size={14} color="#00bf71" />
+
+                      <Text className="text-gray-500 text-[10px] ml-2">
+                        Tanggal
+                      </Text>
+                    </View>
+
+                    <Text className="text-[#111827] font-semibold text-sm">
+                      {formData.date}
+                    </Text>
                   </TouchableOpacity>
                 </View>
+              </View>
 
-                <View className="flex-row items-center gap-4">
-                  <View className="flex-1">
-                    <Text className="text-gray-500 text-[10px] mb-1">Qty</Text>
-                    <TextInput
-                      value={String(item.quantity)}
-                      onChangeText={(val) => updateItem(index, "quantity", val)}
-                      keyboardType="numeric"
-                      className="bg-black/20 text-white p-2 rounded-lg text-xs"
-                    />
+              {/* Detail Item */}
+              <View className="mb-8">
+                <View className="flex-row justify-between items-center mb-4">
+                  <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+                    Detail Item
+                  </Text>
+                </View>
+
+                {formData.items.map((item, index) => (
+                  <View
+                    key={index}
+                    className="bg-white rounded-lg p-4 mb-3 border border-gray-200"
+                  >
+                    <View className="flex-row justify-between items-start mb-4">
+                      <TextInput
+                        value={item.name}
+                        onChangeText={(val) => updateItem(index, "name", val)}
+                        className="text-[#111827] font-bold text-md flex-1 mr-2 p-0"
+                        placeholder="Nama Item"
+                        placeholderTextColor="#9ca3af"
+                      />
+
+                      <TouchableOpacity onPress={() => removeItem(index)}>
+                        <Trash2 size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-row items-center gap-4">
+                      {/* Qty */}
+                      <View className="flex-1">
+                        <Text className="text-gray-400 text-[10px] mb-1">
+                          Qty
+                        </Text>
+
+                        <TextInput
+                          value={String(item.quantity)}
+                          onChangeText={(val) =>
+                            updateItem(index, "quantity", val)
+                          }
+                          keyboardType="numeric"
+                          className="bg-[#f3f4f6] text-[#111827] p-3 border border-gray-200 rounded-lg text-xs"
+                        />
+                      </View>
+
+                      {/* Price */}
+                      <View className="flex-[2]">
+                        <Text className="text-gray-400 text-[10px] mb-1">
+                          Harga Satuan
+                        </Text>
+
+                        <TextInput
+                          value={String(item.price)}
+                          onChangeText={(val) =>
+                            updateItem(index, "price", val)
+                          }
+                          keyboardType="numeric"
+                          className="bg-[#f3f4f6] border border-gray-200 text-[#111827] p-3 rounded-lg text-xs"
+                        />
+                      </View>
+
+                      {/* Total */}
+                      <View className="flex-[2] items-end justify-end">
+                        <Text className="text-gray-400 text-[10px] mb-1">
+                          Total
+                        </Text>
+
+                        <Text className="text-[#00bf71] font-bold text-sm">
+                          {(item.quantity * item.price).toLocaleString("id-ID")}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View className="flex-[2]">
-                    <Text className="text-gray-500 text-[10px] mb-1">
-                      Harga Satuan
-                    </Text>
+                ))}
+              </View>
+
+              {/* Description */}
+              <View className="mb-10">
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">
+                  Catatan Tambahan
+                </Text>
+
+                <View className="bg-white rounded-lg p-4 border border-gray-200">
+                  <View className="flex-row items-start">
+                    <AlignLeft size={16} color="#00bf71" />
+
                     <TextInput
-                      value={String(item.price)}
-                      onChangeText={(val) => updateItem(index, "price", val)}
-                      keyboardType="numeric"
-                      className="bg-black/20 text-white p-2 rounded-lg text-xs"
+                      value={formData.description}
+                      onChangeText={(val) =>
+                        setFormData({
+                          ...formData,
+                          description: val,
+                        })
+                      }
+                      multiline
+                      className="text-[#111827] text-sm ml-3 flex-1 p-0"
+                      style={{
+                        textAlignVertical: "top",
+                        minHeight: 60,
+                      }}
+                      placeholderTextColor="#9ca3af"
                     />
-                  </View>
-                  <View className="flex-[2] items-end justify-end">
-                    <Text className="text-gray-500 text-[10px] mb-1">
-                      Total
-                    </Text>
-                    <Text className="text-[#00bf71] font-bold text-sm">
-                      {(item.quantity * item.price).toLocaleString("id-ID")}
-                    </Text>
                   </View>
                 </View>
               </View>
-            ))}
-          </View>
+            </ScrollView>
 
-          {/* Section 3: Deskripsi 💡 */}
-          <View className="mb-10">
-            <Text className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">
-              Catatan Tambahan
-            </Text>
-            <View className="bg-white/5 rounded-2xl p-4 border border-white/10">
-              <View className="flex-row items-start">
-                <AlignLeft size={16} color="#00bf71" className="mt-1" />
-                <TextInput
-                  value={formData.description}
-                  onChangeText={(val) =>
-                    setFormData({ ...formData, description: val })
-                  }
-                  multiline
-                  className="text-white text-sm ml-3 flex-1 p-0"
-                  style={{ textAlignVertical: "top", minHeight: 60 }}
-                />
-              </View>
+            {/* Bottom Button */}
+            <View className="p-5 bg-[#f7f8fa] border-t border-gray-200">
+              <Link href={"/(others)/(transaction)/splitPage"} asChild>
+                <Pressable
+                  onPress={() => console.log("Final Saved Data:", formData)}
+                  className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center flex-row"
+                >
+                  <Text className="text-white font-bold text-lg ml-2">
+                    Simpan Perubahan
+                  </Text>
+                </Pressable>
+              </Link>
             </View>
           </View>
-        </ScrollView>
-
-        {/* Action Button 😎 */}
-        <View className="p-5 bg-[#0a0a0a] border-t border-white/5">
-          <Link href={"/(others)/(transaction)/splitPage"} asChild>
-            <Pressable
-              onPress={() => console.log("Final Saved Data:", formData)}
-              className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center flex-row shadow-lg shadow-[#00bf71]/20"
-            >
-              <Save size={20} color="#0a0a0a" strokeWidth={2.5} />
-              <Text className="text-[#0a0a0a] font-black text-lg ml-2">
-                Simpan Perubahan
-              </Text>
-            </Pressable>
-          </Link>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 }

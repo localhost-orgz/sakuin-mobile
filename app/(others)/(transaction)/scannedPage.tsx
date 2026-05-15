@@ -1,6 +1,5 @@
 import { Link, useRouter } from "expo-router";
 import {
-  ArrowRight,
   Calendar,
   ChevronLeft,
   Edit3,
@@ -10,12 +9,13 @@ import {
 import React from "react";
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
+  StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MOCK_STRUK_DATA } from "@/constants/sakusnapResponse";
 
@@ -33,99 +33,134 @@ export default function SakuResult() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0a0a0a]">
-      {/* Header */}
-      <View className="flex flex-row items-center px-5 py-4">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 bg-gray-900 rounded-full items-center justify-center border border-white/10"
-        >
-          <ChevronLeft size={20} color="white" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold ml-4">
-          Hasil SakuSnap 🔍
-        </Text>
-      </View>
+    <>
+      {/* Top Safe Area (Jam iPhone / Notch) */}
+      <SafeAreaView edges={["top"]} className="bg-[#00bf71]" />
 
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
-        {/* Total Card */}
-        <View className="bg-[#121212] p-6 rounded-3xl border border-white/5 mb-6 items-center">
-          <Text className="text-gray-400 text-sm mb-1">Total Pengeluaran</Text>
-          <Text className="text-[#00bf71] text-3xl font-black">
-            {formatIDR(result.amount)}
+      {/* Main Screen */}
+      <SafeAreaView edges={["bottom"]} className="flex-1 bg-[#f7f8fa]">
+        <StatusBar barStyle="light-content" backgroundColor="#00bf71" />
+
+        {/* Header */}
+        <View className="bg-[#00bf71] px-5 py-4 flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 bg-white/20 rounded-full items-center justify-center border border-white/20"
+          >
+            <ChevronLeft size={20} color="white" />
+          </TouchableOpacity>
+
+          <Text className="text-white text-lg font-bold ml-4">
+            Hasil SakuSnap
           </Text>
-
-          <View className="flex-row mt-4 gap-2">
-            <View className="bg-white/5 px-3 py-1.5 rounded-full flex-row items-center">
-              <Utensils size={14} color="#00bf71" />
-              <Text className="text-white text-xs ml-2 font-medium">
-                {result.category_name}
-              </Text>
-            </View>
-            <View className="bg-white/5 px-3 py-1.5 rounded-full flex-row items-center">
-              <Calendar size={14} color="#00bf71" />
-              <Text className="text-white text-xs ml-2 font-medium">
-                {result.date}
-              </Text>
-            </View>
-          </View>
         </View>
 
-        {/* Items List */}
-        <View className="mb-8">
-          <View className="flex-row items-center mb-4 gap-2">
-            <ReceiptText size={18} color="#00bf71" />
-            <Text className="text-white font-bold text-base">Rincian Item</Text>
-          </View>
+        {/* White Content */}
+        <View className="flex-1 bg-[#f7f8fa] rounded-t-[32px] overflow-hidden">
+          <ScrollView
+            className="flex-1 px-5 pt-5"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Total Card */}
+            <View className="bg-white p-6 rounded-xl border border-gray-200 mb-6 items-center">
+              <Text className="text-gray-500 text-sm mb-1">
+                Total Pengeluaran
+              </Text>
 
-          {result.items.map((item, index) => (
-            <View
-              key={index}
-              className="flex-row justify-between items-center py-3 border-b border-white/5"
-            >
-              <View className="flex-1">
-                <Text className="text-white font-semibold text-sm">
-                  {item.name}
-                </Text>
-                <Text className="text-gray-500 text-xs">
-                  {item.quantity}x @ {formatIDR(item.price)}
+              <Text className="text-[#00bf71] text-3xl font-bold mb-1">
+                {formatIDR(result.amount)}
+              </Text>
+
+              <View className="flex-row mt-4 gap-2">
+                <View className="bg-[#f3f4f6] px-3 py-1.5 rounded-full flex-row items-center">
+                  <Utensils size={14} color="#00bf71" />
+
+                  <Text className="text-[#111827] text-xs ml-2 font-medium">
+                    {result.category_name}
+                  </Text>
+                </View>
+
+                <View className="bg-[#f3f4f6] px-3 py-1.5 rounded-full flex-row items-center">
+                  <Calendar size={14} color="#00bf71" />
+
+                  <Text className="text-[#111827] text-xs ml-2 font-medium">
+                    {result.date}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Items List */}
+            <View className="bg-white rounded-xl border border-gray-200 px-5 py-5 mb-6">
+              <View className="flex-row items-center mb-4 gap-2">
+                <ReceiptText size={18} color="#00bf71" />
+
+                <Text className="text-[#111827] font-bold text-base">
+                  Rincian Item
                 </Text>
               </View>
-              <Text className="text-white font-bold text-sm">
-                {formatIDR(item.total)}
+
+              {result.items.map((item, index) => (
+                <View
+                  key={index}
+                  className={`flex-row justify-between items-center py-3 ${
+                    index !== result.items.length - 1
+                      ? "border-b border-gray-100"
+                      : ""
+                  }`}
+                >
+                  <View className="flex-1">
+                    <Text className="text-[#111827] font-semibold text-sm">
+                      {item.name}
+                    </Text>
+
+                    <Text className="text-gray-500 text-xs mt-0.5">
+                      {item.quantity}x @ {formatIDR(item.price)}
+                    </Text>
+                  </View>
+
+                  <Text className="text-[#111827] font-bold text-sm">
+                    {formatIDR(item.total)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Description */}
+            <View className="bg-white p-4 rounded-xl border border-gray-200 mb-10 ">
+              <Text className="text-gray-400 text-xs mb-1 uppercase font-bold tracking-widest">
+                Catatan
+              </Text>
+
+              <Text className="text-gray-700 text-sm italic leading-6">
+                "{result.description}"
               </Text>
             </View>
-          ))}
+          </ScrollView>
+
+          {/* Bottom Actions */}
+          <View className="p-5 flex-row gap-3 bg-[#f7f8fa] border-t border-gray-200">
+            <Link href={"/(others)/(transaction)/editScannedPage"} asChild>
+              <Pressable className="flex-1 gap-2 flex-row bg-white py-4 rounded-xl items-center justify-center border border-gray-200">
+                <Edit3 size={15} color="#111827" />
+
+                <Text className="text-[#111827] font-bold ml-2">Edit</Text>
+              </Pressable>
+            </Link>
+
+            <Link href={"/(others)/(transaction)/splitPage"} asChild>
+              <TouchableOpacity
+                onPress={() => console.log("Next Pressed")}
+                className="flex-[2] flex-row bg-[#00bf71] rounded-xl items-center justify-center"
+              >
+                <Text className="text-white font-bold text-lg mr-2">
+                  Lanjutkan
+                </Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-
-        {/* Description */}
-        <View className="bg-white/5 p-4 rounded-2xl mb-10">
-          <Text className="text-gray-400 text-xs mb-1 uppercase font-bold tracking-widest">
-            Catatan
-          </Text>
-          <Text className="text-gray-200 text-sm italic">
-            "{result.description}"
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Bottom Actions - In a Row! 🚀 */}
-      <View className="p-5 flex-row gap-3 bg-[#0a0a0a] border-t border-white/5">
-        <Link href={"/(others)/(transaction)/editScannedPage"} asChild>
-          <Pressable className="flex-1 flex-row bg-white/5 h-14 rounded-2xl items-center justify-center border border-white/10">
-            <Edit3 size={18} color="white" />
-            <Text className="text-white font-bold ml-2">Edit</Text>
-          </Pressable>
-        </Link>
-
-        <TouchableOpacity
-          onPress={() => console.log("Next Pressed")}
-          className="flex-[2] flex-row bg-[#00bf71] h-14 rounded-2xl items-center justify-center shadow-lg shadow-[#00bf71]/20"
-        >
-          <Text className="text-[#0a0a0a] font-black text-lg mr-2">Simpan</Text>
-          <ArrowRight size={20} color="#0a0a0a" strokeWidth={3} />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }

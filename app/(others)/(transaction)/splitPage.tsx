@@ -1,5 +1,5 @@
 import { Link, useRouter } from "expo-router";
-import { Check, ChevronLeft, Plus, User } from "lucide-react-native";
+import { ChevronLeft, Plus, User } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   Keyboard,
@@ -7,19 +7,20 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Dummy Constant
 const MOCK_STRUK_DATA = {
   data: {
-    amount: 132000,
+    amount: 150000,
     items: [
       { name: "Bangladesh Biasa", quantity: 3, price: 15000, total: 45000 },
       { name: "Puding Isi 1", quantity: 2, price: 8000, total: 16000 },
@@ -38,6 +39,7 @@ export default function SakuSplit() {
   const [participants, setParticipants] = useState([{ id: "me", name: "Me" }]);
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
+
   const [assignedProducts, setAssignedProducts] = useState(
     MOCK_STRUK_DATA.data.items.map(() => ["me"]),
   );
@@ -48,6 +50,7 @@ export default function SakuSplit() {
         ...participants,
         { id: Date.now().toString(), name: newPersonName },
       ]);
+
       setNewPersonName("");
       setIsSheetVisible(false);
     }
@@ -58,6 +61,7 @@ export default function SakuSplit() {
     participantId: string,
   ) => {
     const currentAssigned = [...assignedProducts[productIdx]];
+
     if (currentAssigned.includes(participantId)) {
       setAssignedProducts((prev) => {
         const next = [...prev];
@@ -76,182 +80,246 @@ export default function SakuSplit() {
   const myTotalExpense = useMemo(() => {
     return assignedProducts.reduce((acc, assignedIds, idx) => {
       const productTotal = MOCK_STRUK_DATA.data.items[idx].total;
+
       if (!assignedIds.includes("me") || assignedIds.length === 0) return acc;
+
       return acc + productTotal / assignedIds.length;
     }, 0);
   }, [assignedProducts]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0a0a0a]">
-      {/* Header */}
-      <View className="px-5 py-4 border-b border-white/5 flex-row items-center">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="p-2 bg-white/5 rounded-full mr-3"
-        >
-          <ChevronLeft size={20} color="white" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold">Bagi Tagihan 🍕</Text>
-      </View>
+    <>
+      {/* Top Safe Area */}
+      <SafeAreaView edges={["top"]} className="bg-[#00bf71]" />
 
-      <ScrollView className="flex-1 px-5 pt-4">
-        {/* Participants Bar */}
-        <View className="mb-6">
-          <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3">
-            Partisipan
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="flex-row"
+      {/* Main Screen */}
+      <SafeAreaView edges={["bottom"]} className="flex-1 bg-[#f7f8fa]">
+        <StatusBar backgroundColor="#00bf71" barStyle="light-content" />
+
+        {/* Header */}
+        <View className="bg-[#00bf71] px-5 py-4 flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="p-2 bg-white/20 rounded-full mr-3"
           >
-            {participants.map((p) => (
-              <View
-                key={p.id}
-                className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${p.id === "me" ? "bg-[#00bf71]/10 border-[#00bf71]" : "bg-white/5 border-white/10"}`}
+            <ChevronLeft size={20} color="white" />
+          </TouchableOpacity>
+
+          <Text className="text-white text-lg font-bold">Bagi Tagihan</Text>
+        </View>
+
+        {/* Content */}
+        <View className="flex-1 bg-[#f7f8fa] rounded-t-[32px] overflow-hidden">
+          <ScrollView className="flex-1 pt-5">
+            {/* Participants Bar */}
+            <View className="mb-6 px-5">
+              <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-3">
+                Partisipan
+              </Text>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="flex-row"
               >
-                <User size={12} color={p.id === "me" ? "#00bf71" : "white"} />
-                <Text
-                  className={`text-xs ml-2 font-bold ${p.id === "me" ? "text-[#00bf71]" : "text-white"}`}
+                {participants.map((p) => (
+                  <View
+                    key={p.id}
+                    className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
+                      p.id === "me"
+                        ? "bg-[#00bf71]/10 border-[#00bf71]"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <User
+                      size={12}
+                      color={p.id === "me" ? "#00bf71" : "#6b7280"}
+                    />
+
+                    <Text
+                      className={`text-xs ml-2 font-bold ${
+                        p.id === "me" ? "text-[#00bf71]" : "text-[#111827]"
+                      }`}
+                    >
+                      {p.name}
+                    </Text>
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  onPress={() => setIsSheetVisible(true)}
+                  className="w-10 h-10 bg-[#00bf71] rounded-full items-center justify-center"
                 >
-                  {p.name}
+                  <Plus size={20} color="white" strokeWidth={3} />
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            <View className="mb-16">
+              {/* Section Title */}
+              <View className="px-5 mb-3">
+                <Text className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
+                  Daftar Belanja & Pembagian
                 </Text>
               </View>
-            ))}
-            <TouchableOpacity
-              onPress={() => setIsSheetVisible(true)}
-              className="w-10 h-10 bg-[#00bf71] rounded-full items-center justify-center"
-            >
-              <Plus size={20} color="black" strokeWidth={3} />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
 
-        {/* Product List */}
-        <View className="mb-20">
-          <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3">
-            Daftar Belanja & Pembagian
-          </Text>
-          {MOCK_STRUK_DATA.data.items.map((item, idx) => {
-            const assignedCount = assignedProducts[idx].length;
-            const myShare = assignedProducts[idx].includes("me")
-              ? item.total / (assignedCount || 1)
-              : 0;
+              {/* Full Width List */}
+              <View className="bg-white border-y border-gray-100">
+                {MOCK_STRUK_DATA.data.items.map((item, idx) => {
+                  const assignedCount = assignedProducts[idx].length;
 
-            return (
-              <View
-                key={idx}
-                className="bg-white/5 rounded-2xl p-4 mb-3 border border-white/5"
-              >
-                <View className="flex-row justify-between mb-3">
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-sm">
-                      {item.name}
-                    </Text>
-                    <Text className="text-gray-500 text-[10px]">
-                      Rp {item.total.toLocaleString("id-ID")}
-                    </Text>
-                  </View>
-                  <View className="items-end">
-                    <Text className="text-[#00bf71] font-black text-sm">
-                      Rp {myShare.toLocaleString("id-ID")}
-                    </Text>
-                    <Text className="text-gray-500 text-[8px]">PORSI AKU</Text>
-                  </View>
-                </View>
+                  const myShare = assignedProducts[idx].includes("me")
+                    ? item.total / (assignedCount || 1)
+                    : 0;
 
-                <View className="flex-row flex-wrap gap-2 pt-2 border-t border-white/5">
-                  {participants.map((p) => {
-                    const isSelected = assignedProducts[idx].includes(p.id);
-                    return (
-                      <TouchableOpacity
-                        key={p.id}
-                        onPress={() => toggleParticipantInProduct(idx, p.id)}
-                        className={`px-3 py-1.5 rounded-lg border ${isSelected ? "bg-[#00bf71] border-[#00bf71]" : "bg-transparent border-white/10"}`}
-                      >
-                        <Text
-                          className={`text-[10px] font-bold ${isSelected ? "text-black" : "text-gray-500"}`}
-                        >
-                          {p.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                  return (
+                    <View
+                      key={idx}
+                      className={`px-5 py-4 ${
+                        idx !== MOCK_STRUK_DATA.data.items.length - 1
+                          ? "border-b border-gray-100"
+                          : ""
+                      }`}
+                    >
+                      {/* Top */}
+                      <View className="flex-row justify-between items-start">
+                        <View className="flex-1 pr-4">
+                          <Text className="text-[#111827] text-[15px] font-semibold leading-5">
+                            {item.name}
+                          </Text>
+
+                          <Text className="text-gray-400 text-xs mt-1">
+                            Rp {item.total.toLocaleString("id-ID")}
+                          </Text>
+                        </View>
+
+                        {/* My Share */}
+                        <View className="items-end">
+                          <Text className="text-[#111827] text-sm font-semibold">
+                            Rp {myShare.toLocaleString("id-ID")}
+                          </Text>
+
+                          <Text className="text-[#00bf71] text-[11px] mt-1 font-medium">
+                            Bagian saya
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Participants */}
+                      <View className="flex-row flex-wrap gap-2 mt-4">
+                        {participants.map((p) => {
+                          const isSelected = assignedProducts[idx].includes(
+                            p.id,
+                          );
+
+                          return (
+                            <TouchableOpacity
+                              key={p.id}
+                              onPress={() =>
+                                toggleParticipantInProduct(idx, p.id)
+                              }
+                              activeOpacity={0.7}
+                              className={`h-8 px-3 rounded-full flex-row items-center ${
+                                isSelected ? "bg-[#ecfdf3]" : "bg-[#f3f4f6]"
+                              }`}
+                            >
+                              <View
+                                className={`w-2 h-2 rounded-full mr-2 ${
+                                  isSelected ? "bg-[#00bf71]" : "bg-gray-300"
+                                }`}
+                              />
+
+                              <Text
+                                className={`text-xs font-medium ${
+                                  isSelected
+                                    ? "text-[#00bf71]"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {p.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-            );
-          })}
-        </View>
-      </ScrollView>
+            </View>
+          </ScrollView>
 
-      {/* Footer */}
-      <View className="p-5 bg-[#0a0a0a] border-t border-white/10 flex-row items-center justify-between">
-        <View>
-          <Text className="text-gray-500 text-[10px] font-bold uppercase">
-            Total Porsi Aku
-          </Text>
-          <Text className="text-white text-xl font-black">
-            Rp {myTotalExpense.toLocaleString("id-ID")}
-          </Text>
-        </View>
-        <Link href={"/(others)/(transaction)/summarySplit"} asChild>
-          <Pressable className="bg-[#00bf71] px-6 h-12 rounded-2xl flex-row items-center justify-center shadow-lg shadow-[#00bf71]/20">
-            <Text className="text-black font-bold mr-2">Simpan</Text>
-            <Check size={18} color="black" strokeWidth={3} />
-          </Pressable>
-        </Link>
-      </View>
+          {/* Footer */}
+          <View className="p-5 bg-[#f7f8fa] border-t border-gray-200 flex-row items-center justify-between">
+            <View>
+              <Text className="text-gray-400 text-[10px] font-bold uppercase">
+                Total Porsi Aku
+              </Text>
 
-      {/* ── Perbaikan: Keyboard Floating Sheet ── */}
-      <Modal
-        visible={isSheetVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsSheetVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setIsSheetVisible(false)}>
-          <View className="flex-1 justify-end bg-black/60">
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-            >
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View className="bg-[#121212] p-6 rounded-t-[32px] border-t border-white/10">
-                  <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-6" />
+              <Text className="text-[#111827] text-xl font-bold">
+                Rp {myTotalExpense.toLocaleString("id-ID")}
+              </Text>
+            </View>
 
-                  <Text className="text-white text-lg font-bold mb-4 text-center">
-                    Tambah Teman Split 🤝
-                  </Text>
-
-                  <TextInput
-                    placeholder="Contoh: Nayy atau Tia Monika"
-                    placeholderTextColor="#555"
-                    value={newPersonName}
-                    onChangeText={setNewPersonName}
-                    autoFocus
-                    className="bg-white/5 border border-white/10 text-white p-4 rounded-2xl mb-6 text-center text-lg font-semibold"
-                  />
-
-                  <TouchableOpacity
-                    onPress={addParticipant}
-                    className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center active:opacity-80"
-                  >
-                    <Text className="text-black font-black text-base">
-                      Konfirmasi
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setIsSheetVisible(false)}
-                    className="my-4 items-center"
-                  >
-                    <Text className="text-gray-500 font-medium">Batal</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+            <Link href={"/(others)/(transaction)/summarySplit"} asChild>
+              <Pressable className="bg-[#00bf71] px-6 h-12 rounded-xl flex-row items-center justify-center">
+                <Text className="text-white font-bold mr-2">Simpan</Text>
+              </Pressable>
+            </Link>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </SafeAreaView>
+        </View>
+
+        {/* Modal */}
+        <Modal
+          visible={isSheetVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsSheetVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setIsSheetVisible(false)}>
+            <View className="flex-1 justify-end bg-black/40">
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+              >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                  <View className="bg-white p-6 rounded-t-[32px] border-t border-gray-200">
+                    <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
+
+                    <Text className="text-[#111827] text-lg font-bold mb-4 text-center">
+                      Tambah Teman Split
+                    </Text>
+
+                    <TextInput
+                      placeholder="Contoh: Budi atau Tia Monika"
+                      placeholderTextColor="#9ca3af"
+                      value={newPersonName}
+                      onChangeText={setNewPersonName}
+                      autoFocus
+                      className="bg-[#f3f4f6] border border-gray-200 text-[#111827] p-4 rounded-2xl mb-6 text-center text-lg font-semibold"
+                    />
+
+                    <TouchableOpacity
+                      onPress={addParticipant}
+                      className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center active:opacity-80"
+                    >
+                      <Text className="text-white font-black text-base">
+                        Konfirmasi
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setIsSheetVisible(false)}
+                      className="my-4 items-center"
+                    >
+                      <Text className="text-gray-500 font-medium">Batal</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableWithoutFeedback>
+              </KeyboardAvoidingView>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </SafeAreaView>
+    </>
   );
 }
