@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 // Buat komponen terpisah di luar WalletBottomSheet
 const WalletItem = ({ item, selectedWallet, onSelect }: any) => {
   const { theme } = useWalletTheme(item.themeId);
-  const isSelected = selectedWallet.id === item.id;
+  const isSelected = selectedWallet?.id === item.id;
 
   return (
     <Pressable onPress={() => onSelect(item)}>

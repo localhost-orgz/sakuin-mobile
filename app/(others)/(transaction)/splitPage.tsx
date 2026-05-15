@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Check, ChevronLeft, Plus, User } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   Text,
@@ -193,10 +194,12 @@ export default function SakuSplit() {
             Rp {myTotalExpense.toLocaleString("id-ID")}
           </Text>
         </View>
-        <TouchableOpacity className="bg-[#00bf71] px-6 h-12 rounded-2xl flex-row items-center justify-center shadow-lg shadow-[#00bf71]/20">
-          <Text className="text-black font-bold mr-2">Simpan</Text>
-          <Check size={18} color="black" strokeWidth={3} />
-        </TouchableOpacity>
+        <Link href={"/(others)/(transaction)/summarySplit"} asChild>
+          <Pressable className="bg-[#00bf71] px-6 h-12 rounded-2xl flex-row items-center justify-center shadow-lg shadow-[#00bf71]/20">
+            <Text className="text-black font-bold mr-2">Simpan</Text>
+            <Check size={18} color="black" strokeWidth={3} />
+          </Pressable>
+        </Link>
       </View>
 
       {/* ── Perbaikan: Keyboard Floating Sheet ── */}
