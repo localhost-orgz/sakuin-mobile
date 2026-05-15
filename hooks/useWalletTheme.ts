@@ -34,6 +34,7 @@ export interface WalletTheme {
 }
 
 export interface UseWalletThemeReturn {
+  backgroundColor: string;
   theme: WalletTheme;
   getColor: (colorKey: WalletColorKey) => string;
   gradient: (direction?: string) => string;
