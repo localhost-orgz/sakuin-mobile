@@ -1,46 +1,96 @@
-import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import React from "react";
 import { Text, View } from "react-native";
 
-const RecentTransactionItem = ({ item }: any) => {
-  const getCategoryDetail = (categoryId: string) => {
-    return TOP_SPENDING_CATEGORIES.find((cat) => cat.id === categoryId);
+interface RecentTransactionItemProps {
+  item: {
+    _id: string;
+    name: string;
+    amount: number;
+    type: "income" | "expense";
+    date: string;
+    wallet_id: string;
+    category_id: {
+      _id: string;
+      name: string;
+      slug: string;
+      emoticon: string;
+    };
   };
+}
+
+const RecentTransactionItem = ({ item }: RecentTransactionItemProps) => {
+  // Helper memformat nominal menjadi Rupiah tanpa pecahan desimal (,00)
   const formatRupiah = (amount: number): string => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
-      minimumFractionDigits: 0, // Biar gak ada ,00 di belakang 💸
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
-  const categoryDetail = getCategoryDetail(item.categoryId);
-  // Di dalam component RecentTransactionItem
+
+  // Helper merapikan tampilan tanggal dari string ISO "2026-05-16T00:00:00.000Z" -> "16 May 2026"
+  const formatDateLabel = (dateString: string) => {
+    try {
+      const d = new Date(dateString);
+      return d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Tema fallback jika slug tidak terdaftar di hook themeId wallet Anda
   const { theme } = useWalletTheme(
-    (categoryDetail?.themeId as WalletThemeId) ?? "ocean",
+    (item.category_id?.slug as WalletThemeId) ?? "ocean"
   );
+
+  const isIncome = item.type === "income";
+
   return (
     <View
-      key={item.id}
-      className="flex-1 py-2.5 mx-5 flex flex-row items-center border-b border-slate-300/30 justify-between"
+      className="flex-1 py-3 mx-5 flex flex-row items-center border-b border-slate-300/30 justify-between"
     >
       <View className="flex flex-row items-center gap-3">
+        {/* Lingkaran Icon / Emoticon Kategori */}
         <View
-          style={{ backgroundColor: theme.bgColor }}
-          className="w-[45px] h-[45px] bg-[#FFF4E5] flex justify-center items-center rounded-full"
+          style={{ backgroundColor: theme.bgColor || "#FFF4E5" }}
+          className="w-[45px] h-[45px] flex justify-center items-center rounded-full"
         >
-          <Text className="text-md">{categoryDetail?.icon}</Text>
+          <Text className="text-xl">
+            {item.category_id?.emoticon ?? "💸"}
+          </Text>
         </View>
 
-        <View className="flex flex-col gap-1">
-          <Text className="text-md font-semibold">{item.title}</Text>
-          <Text className="text-xs text-[#9ca3af]">{item.date}</Text>
+        {/* Info Nama Transaksi & Tanggal */}
+        <View className="flex flex-col gap-0.5">
+          <Text numberOfLines={1} className="text-md font-semibold text-slate-800 max-w-[160px]">
+            {item.name}
+          </Text>
+          <Text className="text-xs text-[#9ca3af]">
+            {formatDateLabel(item.date)}
+          </Text>
         </View>
       </View>
+
+      {/* Info Nominal & Indikator Tipe Transaksi */}
       <View className="flex flex-col items-end">
-        <Text className="text-md text-red-500 font-semibold mb-1">{`-${formatRupiah(item.amount)}`}</Text>
-        <Text className="text-sm text-[#9ca3af]">{item.wallet}</Text>
+        <Text 
+          className={`text-md font-bold mb-0.5 ${
+            isIncome ? "text-emerald-500" : "text-red-500"
+          }`}
+        >
+          {isIncome ? `+${formatRupiah(item.amount)}` : `-${formatRupiah(item.amount)}`}
+        </Text>
+        
+        {/* Menampilkan kategori nama sebagai pelengkap context */}
+        <Text className="text-xs text-[#9ca3af]">
+          {item.category_id?.name}
+        </Text>
       </View>
     </View>
   );

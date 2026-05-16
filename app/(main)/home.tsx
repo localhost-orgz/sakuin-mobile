@@ -21,7 +21,6 @@ import {
 import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
-import { RECENT_TRANSACTIONS } from "@/constants/transactionList";
 import { apiRequest } from "@/utils/api";
 import { Link } from "expo-router";
 import { Camera, LogIn, Pen, Plus, Receipt } from "lucide-react-native";
@@ -32,6 +31,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [wallets, setWallets] = useState([]);
+  const [transactions, setTransactions] = useState([]); // State untuk menyimpan data transaksi dari API
   const [loading, setLoading] = useState(true);
   const [snapModalVisible, setSnapModalVisible] = useState(true);
 
@@ -55,9 +55,9 @@ export default function Home() {
   const fetchWallets = async () => {
     try {
       setLoading(true);
-      const res = await apiRequest("/wallets", { method: "GET" }); //
+      const res = await apiRequest("/wallets", { method: "GET" });
       if (res.status === "success" && res.data) {
-        setWallets(res.data); //
+        setWallets(res.data);
       }
     } catch (err) {
       console.error("Failed to fetch wallets:", err);
@@ -66,10 +66,26 @@ export default function Home() {
     }
   };
 
+  // Fungsi fetch transactions disamakan polanya dengan fetchWallets
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const res = await apiRequest("/transaction", { method: "GET" });
+      if (res.status === "success" && res.data) {
+        setTransactions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch transactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const initHomeData = async () => {
     try {
       setLoading(true);
-      await Promise.all([fetchUser(), fetchWallets()]); // Jalankan fetch paralel
+      // Menjalankan fetch paralel untuk user, wallets, dan transactions bersamaan
+      await Promise.all([fetchUser(), fetchWallets(), fetchTransactions()]);
     } catch (err) {
       console.error("Error loading home data:", err);
     } finally {
@@ -83,7 +99,8 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchUser(), fetchWallets()]);
+    // Ditambahkan fetchTransactions di dalam Promise.all onRefresh
+    await Promise.all([fetchUser(), fetchWallets(), fetchTransactions()]);
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
@@ -105,7 +122,6 @@ export default function Home() {
       {/* ── SCROLLABLE BODY ───────────────────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        // Over-scroll bounce area matches the green header — no white gap
         style={{ flex: 1, backgroundColor: "#00bf71" }}
         contentContainerStyle={{
           paddingBottom: insets.bottom + 110,
@@ -131,7 +147,8 @@ export default function Home() {
         <View style={{ marginTop: 56, marginBottom: 0 }}>
           <TopSpendCategory TopCategories={TOP_SPENDING_CATEGORIES} />
           <CurrentGoals goalsList={CURRENT_GOALS} />
-          <RecentTransactions transactions={RECENT_TRANSACTIONS} />
+          {/* Properti transactions sekarang dialirkan dari state API bukan dari konstanta RECENT_TRANSACTIONS mock lagi */}
+          <RecentTransactions transactions={transactions} />
         </View>
 
         <TouchableOpacity
@@ -241,28 +258,8 @@ export default function Home() {
           </Pressable>
         </Link>
 
-        <Link href="/(others)/(transaction)/allTransactions" asChild>
-          <Pressable className="bg-white mx-4 mt-4 p-5 rounded-[24px] flex-row items-center justify-between border border-gray-100 shadow-sm shadow-black/5">
-            <View className="flex-row items-center">
-              <View className="bg-sky-100 p-3 rounded-2xl mr-4">
-                <Camera size={24} className="text-sky-500" strokeWidth={2.5} />
-              </View>
-              <View>
-                <Text className="text-slate-900 font-bold text-lg">
-                  All Transactions Page
-                </Text>
-                <Text className="text-slate-400 text-xs">
-                  Pindahkan uang dari Wallet satu ke wallet yang lainnya
-                </Text>
-              </View>
-            </View>
-            <View className="bg-slate-50 p-2 rounded-full">
-              <Plus size={20} color="#cbd5e1" />
-            </View>
-          </Pressable>
-        </Link>
         <Link href="/(others)/(transaction)/scannedPage" asChild>
-          <Pressable className="bg-white mx-4 mt-4 p-5 rounded-[24px] flex-row items-center justify-between border border-gray-100 shadow-sm shadow-black/5">
+          <Pressable className="bg-white mx-4 mt-4 p-5 rounded-[24px] flex-row items-center justify-between border border-gray-100 shadow-sm shadow-black/5s">
             <View className="flex-row items-center">
               <View className="bg-sky-100 p-3 rounded-2xl mr-4">
                 <Receipt size={24} className="text-sky-500" strokeWidth={2.5} />
@@ -281,7 +278,7 @@ export default function Home() {
             </View>
           </Pressable>
         </Link>
-        {/* Taruh Modal di paling bawah sebelum penutup View utama */}
+
         <SakuSnapModal
           visible={snapModalVisible}
           onClose={() => setSnapModalVisible(false)}
