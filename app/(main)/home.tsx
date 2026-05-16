@@ -24,7 +24,7 @@ import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import { RECENT_TRANSACTIONS } from "@/constants/transactionList";
 import { apiRequest } from "@/utils/api";
 import { Link } from "expo-router";
-import { Camera, LogIn, Pen, Plus, Receipt } from "lucide-react-native";
+import { Camera, LogIn, Mic, Pen, Plus, Receipt } from "lucide-react-native";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -270,6 +270,26 @@ export default function Home() {
               <View>
                 <Text className="text-slate-900 font-bold text-lg">
                   Figma Sakusnap 3
+                </Text>
+                <Text className="text-slate-400 text-xs">
+                  Pindahkan uang dari Wallet satu ke wallet yang lainnya
+                </Text>
+              </View>
+            </View>
+            <View className="bg-slate-50 p-2 rounded-full">
+              <Plus size={20} color="#cbd5e1" />
+            </View>
+          </Pressable>
+        </Link>
+        <Link href="/(others)/(transaction)/sakuVoice" asChild>
+          <Pressable className="bg-white mx-4 mt-4 p-5 rounded-[24px] flex-row items-center justify-between border border-gray-100 shadow-sm shadow-black/5">
+            <View className="flex-row items-center">
+              <View className="bg-sky-100 p-3 rounded-2xl mr-4">
+                <Mic size={24} className="text-sky-500" strokeWidth={2.5} />
+              </View>
+              <View>
+                <Text className="text-slate-900 font-bold text-lg">
+                  SakuVoice
                 </Text>
                 <Text className="text-slate-400 text-xs">
                   Pindahkan uang dari Wallet satu ke wallet yang lainnya

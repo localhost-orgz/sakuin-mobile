@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchUser();
-    }, [])
+    }, []),
   );
 
   if (loading) {

@@ -19,7 +19,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "package": "com.fazamumtaz.sakuin"
     },
     "web": {
       "output": "static",
@@ -39,14 +41,25 @@
           }
         }
       ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-font",
-      "@react-native-voice/voice",
       "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d03089bc-d6ac-47cb-9e13-67b4c774f508"
+      }
     }
   }
 }
