@@ -23,7 +23,7 @@ import { CURRENT_GOALS } from "@/constants/goalsList";
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import { apiRequest } from "@/utils/api";
 import { Link } from "expo-router";
-import { Camera, LogIn, Pen, Plus, Receipt } from "lucide-react-native";
+import { Camera, LogIn, Mic, Pen, Plus, Receipt } from "lucide-react-native";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
