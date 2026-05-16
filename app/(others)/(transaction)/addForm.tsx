@@ -5,9 +5,9 @@ import { CURRENCY_LIST } from "@/constants/currencyList";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { CalendarDays, ChevronDown } from "lucide-react-native";
-import { useRef, useState, useEffect } from "react"; // 1. Tambahkan useEffect
+import { useRef, useState, useEffect } from "react";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { apiRequest } from "@/utils/api"; // 2. Import apiRequest
+import { apiRequest } from "@/utils/api";
 
 import {
   Platform,
@@ -18,40 +18,43 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransaction() {
   const [transactionType, setTransactionType] = useState("expense");
-  const [amount, setAmount] = useState("0.00");
+  const [amount, setAmount] = useState(""); // Nilai awal string kosong agar placeholder muncul
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // State baru untuk Nama dan Deskripsi
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
 
   // State untuk menampung data dari API
   const [categories, setCategories] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // State loading saat submit button ditekan
 
   const [selectedCurrency, setSelectedCurrency] = useState(
     CURRENCY_LIST.find((c) => c.code === "IDR") ?? CURRENCY_LIST[0],
   );
   
-  // Awalnya set ke null atau objek kosong sebelum data API masuk
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
 
-  // Fetching Data dari API
+  // Fetching Data dari API untuk Dropdown/BottomSheet
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
-        // Menggunakan apiRequest wrapper yang sudah dibuat
         const categoriesRes = await apiRequest("/categories", { method: "GET" });
         const walletsRes = await apiRequest("/wallets", { method: "GET" });
 
         if (categoriesRes?.status === "success") {
           setCategories(categoriesRes.data);
-          // Set default category pertama jika tersedia
           if (categoriesRes.data.length > 0) {
             setSelectedCategory(categoriesRes.data[0]);
           }
@@ -59,7 +62,6 @@ export default function AddTransaction() {
 
         if (walletsRes?.status === "success") {
           setWallets(walletsRes.data);
-          // Set default wallet pertama jika tersedia
           if (walletsRes.data.length > 0) {
             setSelectedWallet(walletsRes.data[0]);
           }
@@ -74,13 +76,27 @@ export default function AddTransaction() {
     fetchData();
   }, []);
 
-  // -- helper
+  // -- helper format tanggal untuk tampilan UI
   const formatDate = (d: Date) => {
     return d.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
+  };
+
+  // -- helper format tanggal untuk API (YYYY-MM-DD)
+  const formatDateForApi = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // -- helper untuk mengubah angka mentah menjadi format ribuan dengan titik (e.g. 1200000 -> 1.200.000)
+  const formatCurrencyInput = (text: string) => {
+    const cleanNumber = text.replace(/[^0-9]/g, ""); // Hapus karakter non-angka
+    return cleanNumber.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Tambahkan titik setiap kelipatan 3 digit
   };
 
   const handleConfirm = (selected: Date) => {
@@ -118,9 +134,64 @@ export default function AddTransaction() {
     closeCategorySheet();
   };
 
+  // Fungsi untuk handle submit data ke API
+  const handleSubmit = async () => {
+    // Hilangkan semua tanda titik untuk mendapatkan nilai angka murni
+    const cleanAmountString = amount.replace(/\./g, "");
+    const parsedAmount = parseFloat(cleanAmountString);
+
+    // Validasi input dasar
+    if (!name.trim()) {
+      Alert.alert("Error", "Nama transaksi tidak boleh kosong");
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert("Error", "Silakan pilih kategori terlebih dahulu");
+      return;
+    }
+    if (!selectedWallet) {
+      Alert.alert("Error", "Silakan pilih wallet terlebih dahulu");
+      return;
+    }
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert("Error", "Jumlah nominal harus lebih dari 0");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Request body payload
+      const payload = {
+        category_id: selectedCategory._id || selectedCategory.id,
+        wallet_id: selectedWallet._id || selectedWallet.id,
+        amount: cleanAmountString, // Mengirim string angka murni (e.g., "12000000") ke API
+        type: transactionType, // "expense" atau "income"
+        name: name,
+        description: description,
+        date: formatDateForApi(date), // format: "YYYY-MM-DD"
+        input_method: "manual"
+      };
+
+      const response = await apiRequest("/transaction", {
+        method: "POST",
+        body: payload,
+      });
+
+      if (response?.status === "success" || response) {
+        Alert.alert("Sukses", "Transaksi berhasil ditambahkan!");
+        router.back();
+      }
+    } catch (error: any) {
+      Alert.alert("Gagal", error.message || "Gagal menambahkan transaksi");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white">
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#00bf71" />
       </View>
     );
@@ -169,7 +240,7 @@ export default function AddTransaction() {
             </View>
           </View>
 
-          {/* Amount */}
+          {/* Amount dengan Format Otomatis */}
           <View className="flex-row items-center justify-center my-10">
             <Text className="text-4xl font-bold mr-2">
               {selectedCurrency.symbol ?? selectedCurrency.code}
@@ -178,8 +249,11 @@ export default function AddTransaction() {
               className="text-4xl font-bold text-black"
               keyboardType="numeric"
               value={amount}
-              onChangeText={setAmount}
-              placeholder="0.00"
+              placeholder="0"
+              onChangeText={(text) => {
+                const formatted = formatCurrencyInput(text);
+                setAmount(formatted); // Update state dengan teks yang telah diformat titik
+              }}
             />
           </View>
 
@@ -253,6 +327,8 @@ export default function AddTransaction() {
                   placeholder="Masukkan Nama"
                   placeholderTextColor="#9CA3AF"
                   className="text-black px-4 py-3"
+                  value={name}
+                  onChangeText={setName}
                 />
               </View>
             </View>
@@ -269,6 +345,8 @@ export default function AddTransaction() {
                   style={{ minHeight: 100, paddingTop: 12 }}
                   placeholderTextColor="#9CA3AF"
                   className="text-black px-4 py-3"
+                  value={description}
+                  onChangeText={setDescription}
                 />
               </View>
             </View>
@@ -305,10 +383,18 @@ export default function AddTransaction() {
 
         {/* Submit Button */}
         <Pressable
+          onPress={handleSubmit}
+          disabled={submitting}
           style={{ marginBottom: insets.bottom + 16 }}
-          className="self-center w-full py-3 bg-[#00bf71] rounded-[20px] items-center justify-center active:opacity-80"
+          className={`self-center w-full py-3 rounded-[20px] items-center justify-center active:opacity-80 ${
+            submitting ? "bg-emerald-300" : "bg-[#00bf71]"
+          }`}
         >
-          <Text className="text-white text-lg font-semibold">Submit</Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text className="text-white text-lg font-semibold">Submit</Text>
+          )}
         </Pressable>
       </View>
 
