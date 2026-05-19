@@ -1,4 +1,6 @@
 import WalletBottomSheet from "@/components/Form/WalletBottomSheet";
+import { apiRequest } from "@/utils/api";
+import { getSplitSession } from "@/utils/splitSession";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import {
@@ -9,7 +11,7 @@ import {
   Info,
   Wallet,
 } from "lucide-react-native";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   StatusBar,
@@ -19,8 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Dummy Data
-const SUMMARY_DATA = {
+const FALLBACK_SUMMARY = {
   amount: 132000,
   items: [
     { name: "Bangladesh Biasa", total: 45000 },
@@ -36,18 +37,51 @@ export default function SakuSummary() {
   const router = useRouter();
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // States
+  const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
-
-  // Default ON karena mayoritas user pasti mau nyatet transaksi
   const [isRecordTransaction, setIsRecordTransaction] = useState(true);
+
+  useEffect(() => {
+    async function fetchWallets() {
+      try {
+        const res = await apiRequest("/wallets", { method: "GET" });
+        if (res?.status === "success" && Array.isArray(res.data)) {
+          setWallets(res.data);
+        }
+      } catch (error) {
+        console.error("Gagal memuat dompet:", error);
+      }
+    }
+
+    fetchWallets();
+  }, []);
 
   // Logic confirm
   const canConfirm = !isRecordTransaction || selectedWallet !== null;
 
   const openWalletSheet = () => bottomSheetRef.current?.expand();
 
-  const totalItems = useMemo(() => SUMMARY_DATA.items.length, []);
+  const splitSession = getSplitSession();
+  const summaryData = useMemo(
+    () =>
+      splitSession
+        ? {
+            amount: splitSession.amount,
+            items: splitSession.items.map((i) => ({
+              name: i.name,
+              total: i.total,
+            })),
+          }
+        : FALLBACK_SUMMARY,
+    [splitSession],
+  );
+
+  const totalItems = summaryData.items.length;
+
+  const handleConfirm = () => {
+    console.log("Final Save:", { selectedWallet, isRecordTransaction });
+    router.push("/(others)/(transaction)/participantBills");
+  };
 
   return (
     <>
@@ -81,7 +115,7 @@ export default function SakuSummary() {
             </Text>
 
             <Text className="text-[#111827] text-[40px] font-bold tracking-tight">
-              Rp {SUMMARY_DATA.amount.toLocaleString("id-ID")}
+              Rp {summaryData.amount.toLocaleString("id-ID")}
             </Text>
 
             <Text className="text-gray-400 text-xs mt-2">
@@ -98,11 +132,11 @@ export default function SakuSummary() {
             </View>
 
             <View className="bg-white border-y border-gray-100">
-              {SUMMARY_DATA.items.map((item, i) => (
+              {summaryData.items.map((item, i) => (
                 <View
                   key={i}
                   className={`px-5 py-4 flex-row justify-between items-center ${
-                    i !== SUMMARY_DATA.items.length - 1
+                    i !== summaryData.items.length - 1
                       ? "border-b border-gray-100"
                       : ""
                   }`}
@@ -145,7 +179,7 @@ export default function SakuSummary() {
 
                   <View className="ml-4 flex-1">
                     <Text className="text-[#111827] text-[15px] font-medium">
-                      {selectedWallet ? selectedWallet.bank : "Pilih Dompet"}
+                      {selectedWallet ? selectedWallet.name : "Pilih Dompet"}
                     </Text>
 
                     <Text className="text-gray-500 text-xs mt-1">
@@ -214,12 +248,7 @@ export default function SakuSummary() {
             className={`h-14 rounded-2xl items-center justify-center flex-row ${
               canConfirm ? "bg-[#00bf71]" : "bg-gray-300"
             }`}
-            onPress={() =>
-              console.log("Final Save:", {
-                selectedWallet,
-                isRecordTransaction,
-              })
-            }
+            onPress={handleConfirm}
           >
             <Text className="text-white font-bold text-base mr-2">
               Konfirmasi
@@ -232,10 +261,10 @@ export default function SakuSummary() {
         {/* Wallet Bottom Sheet */}
         <WalletBottomSheet
           ref={bottomSheetRef}
+          wallets={wallets}
           selectedWallet={selectedWallet}
           onSelect={(item) => {
             setSelectedWallet(item);
-
             bottomSheetRef.current?.close();
           }}
         />

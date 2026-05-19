@@ -1,4 +1,5 @@
-import { Link, useRouter } from "expo-router";
+import { setSplitSession } from "@/utils/splitSession";
+import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, User } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
@@ -86,6 +87,16 @@ export default function SakuSplit() {
       return acc + productTotal / assignedIds.length;
     }, 0);
   }, [assignedProducts]);
+
+  const goToSummary = () => {
+    setSplitSession({
+      amount: MOCK_STRUK_DATA.data.amount,
+      items: MOCK_STRUK_DATA.data.items,
+      participants,
+      assignedProducts,
+    });
+    router.push("/(others)/(transaction)/summarySplit");
+  };
 
   return (
     <>
@@ -261,11 +272,12 @@ export default function SakuSplit() {
               </Text>
             </View>
 
-            <Link href={"/(others)/(transaction)/summarySplit"} asChild>
-              <Pressable className="bg-[#00bf71] px-6 h-12 rounded-xl flex-row items-center justify-center">
-                <Text className="text-white font-bold mr-2">Simpan</Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              onPress={goToSummary}
+              className="bg-[#00bf71] px-6 h-12 rounded-xl flex-row items-center justify-center"
+            >
+              <Text className="text-white font-bold mr-2">Simpan</Text>
+            </Pressable>
           </View>
         </View>
 
