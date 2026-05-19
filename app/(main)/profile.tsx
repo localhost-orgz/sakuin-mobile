@@ -1,19 +1,34 @@
-import React, { useCallback, useState } from "react"; // Tambah useState ✨
-import { ActivityIndicator, ScrollView, StatusBar, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import CurrencyBottomSheet from "@/components/Form/CurrencyBottomSheet";
 import BottomProfile from "@/components/Profile/BottomProfile";
 import LogoutModal from "@/components/Profile/LogoutModa";
 import TopProfile from "@/components/Profile/TopProfile";
-import { apiRequest } from "@/utils/api"; // Import helper yang kita buat tadi
+import { CURRENCY_LIST } from "@/constants/currencyList";
+import { apiRequest } from "@/utils/api";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, StatusBar, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false); // State modal 🔑
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const currencyBottomSheet = useRef<BottomSheet>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    () => CURRENCY_LIST.find((c) => c.code === "IDR") ?? CURRENCY_LIST[0],
+  );
+
+  const openCurrencySheet = () => currencyBottomSheet.current?.expand();
+  const closeCurrencySheet = () => currencyBottomSheet.current?.close();
+
+  const handleSelectCurrency = (currency: (typeof CURRENCY_LIST)[0]) => {
+    setSelectedCurrency(currency);
+    closeCurrencySheet();
+  };
 
   const fetchUser = async () => {
     try {
@@ -60,10 +75,17 @@ export default function ProfileScreen() {
         <BottomProfile
           isModalOpen={isLogoutModalOpen}
           onModalOpen={setIsLogoutModalOpen}
+          selectedCurrency={selectedCurrency}
+          onCurrencyPress={openCurrencySheet}
         />
       </ScrollView>
 
-      {/* ─── LOGOUT CONFIRMATION MODAL ─────────────────────────────────── */}
+      <CurrencyBottomSheet
+        ref={currencyBottomSheet}
+        selectedCurrency={selectedCurrency}
+        onSelect={handleSelectCurrency}
+      />
+
       <LogoutModal
         isModalOpen={isLogoutModalOpen}
         onModalOpen={setIsLogoutModalOpen}
