@@ -4,6 +4,7 @@ import {
   Calendar,
   ChevronLeft,
   DollarSign,
+  Plus,
   Trash2,
   Utensils,
 } from "lucide-react-native";
@@ -46,10 +47,37 @@ const MOCK_STRUK_DATA = {
   },
 };
 
+type LineItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
+};
+
+const createEmptyItem = (): LineItem => ({
+  id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  name: "",
+  quantity: 1,
+  price: 0,
+  total: 0,
+});
+
+const withItemIds = (
+  items: Omit<LineItem, "id">[],
+): LineItem[] =>
+  items.map((item, index) => ({
+    ...item,
+    id: `item-${index}-${item.name.slice(0, 8)}`,
+  }));
+
 export default function SakuEdit() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState(MOCK_STRUK_DATA.data);
+  const [formData, setFormData] = useState({
+    ...MOCK_STRUK_DATA.data,
+    items: withItemIds(MOCK_STRUK_DATA.data.items),
+  });
 
   const updateItem = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
@@ -78,6 +106,16 @@ export default function SakuEdit() {
 
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
+
+    setFormData({
+      ...formData,
+      items: newItems,
+    });
+  };
+
+  const addItemAt = (index: number) => {
+    const newItems = [...formData.items];
+    newItems.splice(index, 0, createEmptyItem());
 
     setFormData({
       ...formData,
@@ -189,11 +227,20 @@ export default function SakuEdit() {
                   </Text>
                 </View>
 
+                <TouchableOpacity
+                  onPress={() => addItemAt(0)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center justify-center gap-2 py-3 mb-4 rounded-lg border border-dashed border-[#00bf71] bg-[#00bf71]/10"
+                >
+                  <Plus size={16} color="#00bf71" strokeWidth={2.5} />
+                  <Text className="text-[#00bf71] text-sm font-bold">
+                    Tambah item baru
+                  </Text>
+                </TouchableOpacity>
+
                 {formData.items.map((item, index) => (
-                  <View
-                    key={index}
-                    className="bg-white rounded-lg p-4 mb-3 border border-gray-200"
-                  >
+                  <View key={item.id} className="mb-3">
+                    <View className="bg-white rounded-lg p-4 border border-gray-200">
                     <View className="flex-row justify-between items-start mb-4">
                       <TextInput
                         value={item.name}
@@ -248,9 +295,10 @@ export default function SakuEdit() {
                         </Text>
 
                         <Text className="text-[#00bf71] font-bold text-sm">
-                          {(item.quantity * item.price).toLocaleString("id-ID")}
+                          {item.total.toLocaleString("id-ID")}
                         </Text>
                       </View>
+                    </View>
                     </View>
                   </View>
                 ))}

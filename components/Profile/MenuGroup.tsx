@@ -20,6 +20,7 @@ const MenuGroup = ({
       <View key={item.label}>
         <MenuRow
           item={item}
+          isLast={i === items.length - 1}
           selectedCurrency={selectedCurrency}
           onCurrencyPress={onCurrencyPress}
         />

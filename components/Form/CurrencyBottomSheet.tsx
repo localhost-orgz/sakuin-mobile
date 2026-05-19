@@ -5,7 +5,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { CheckCheck, Search } from "lucide-react-native";
 import { forwardRef, useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ListRenderItem, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Currency = (typeof CURRENCY_LIST)[0];
@@ -34,6 +34,51 @@ const CurrencyBottomSheet = forwardRef<BottomSheet, Props>(
       );
     }, [searchQuery]);
 
+    const renderItem: ListRenderItem<Currency> = ({ item }) => {
+      const isSelected = selectedCurrency.code === item.code;
+
+      return (
+        <Pressable
+          onPress={() => onSelect(item)}
+          style={({ pressed }) => ({
+            backgroundColor: isSelected
+              ? "#f0fdf8"
+              : pressed
+                ? "#f9fafb"
+                : "transparent",
+          })}
+          className="mx-5 flex-row items-center justify-between py-4 px-4 rounded-xl mb-1"
+        >
+          <View>
+            <Text
+              className={`text-base ${
+                isSelected
+                  ? "font-bold text-[#00bf71]"
+                  : "font-semibold text-gray-900"
+              }`}
+            >
+              {item.flag} {item.code}
+            </Text>
+            <Text className="text-gray-500 text-xs">{item.name}</Text>
+          </View>
+
+          <View className="flex-row items-center gap-3">
+            <Text
+              className={`text-lg ${
+                isSelected
+                  ? "font-semibold text-[#00bf71]"
+                  : "text-gray-400"
+              }`}
+            >
+              {item.symbol}
+            </Text>
+
+            {isSelected && <CheckCheck color="#00bf71" size={18} />}
+          </View>
+        </Pressable>
+      );
+    };
+
     return (
       <BottomSheet
         ref={ref}
@@ -61,7 +106,7 @@ const CurrencyBottomSheet = forwardRef<BottomSheet, Props>(
       >
         <BottomSheetFlatList
           data={filteredCurrencies}
-          keyExtractor={(item: any) => item.code}
+          keyExtractor={(item: Currency) => item.code}
           stickyHeaderIndices={[0]}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 40,
@@ -98,54 +143,13 @@ const CurrencyBottomSheet = forwardRef<BottomSheet, Props>(
               )}
             </View>
           }
-          renderItem={({ item }: any) => {
-            const isSelected = selectedCurrency.code === item.code;
-
-            return (
-              <Pressable
-                onPress={() => onSelect(item)}
-                style={({ pressed }) => ({
-                  backgroundColor: isSelected
-                    ? "#f0fdf8"
-                    : pressed
-                      ? "#f9fafb"
-                      : "transparent",
-                })}
-                className="mx-5 flex-row items-center justify-between py-4 px-4 rounded-xl mb-1"
-              >
-                <View>
-                  <Text
-                    className={`text-base ${
-                      isSelected
-                        ? "font-bold text-[#00bf71]"
-                        : "font-semibold text-gray-900"
-                    }`}
-                  >
-                    {item.flag} {item.code}
-                  </Text>
-                  <Text className="text-gray-500 text-xs">{item.name}</Text>
-                </View>
-
-                <View className="flex-row items-center gap-3">
-                  <Text
-                    className={`text-lg ${
-                      isSelected
-                        ? "font-semibold text-[#00bf71]"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {item.symbol}
-                  </Text>
-
-                  {isSelected && <CheckCheck color={"#00bf71"} size={18} />}
-                </View>
-              </Pressable>
-            );
-          }}
+          renderItem={renderItem}
         />
       </BottomSheet>
     );
   },
 );
+
+CurrencyBottomSheet.displayName = "CurrencyBottomSheet";
 
 export default CurrencyBottomSheet;
