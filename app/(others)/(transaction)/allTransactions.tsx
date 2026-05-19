@@ -183,14 +183,21 @@ const formatRupiah = (amount: number): string =>
     maximumFractionDigits: 0,
   }).format(amount);
 
+/** Parse YYYY-MM-DD as local calendar date (avoids UTC off-by-one). */
+const parseLocalDate = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
 const formatSectionDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  const date = parseLocalDate(dateStr);
   const today = new Date();
-  const yesterday = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  if (date.toDateString() === today.toDateString()) return "Today";
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  if (date.getTime() === today.getTime()) return "Today";
+  if (date.getTime() === yesterday.getTime()) return "Yesterday";
 
   return date.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -202,6 +209,7 @@ const formatSectionDate = (dateStr: string): string => {
 type Transaction = (typeof ALL_TRANSACTIONS)[0];
 
 type TxSection = {
+  key: string;
   title: string;
   data: Transaction[];
   totalAmount: number;
@@ -216,6 +224,7 @@ const groupByDate = (txs: Transaction[]): TxSection[] => {
   return Object.entries(map)
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, data]) => ({
+      key: date,
       title: formatSectionDate(date),
       data,
       totalAmount: data.reduce((s, t) => s + t.amount, 0),
@@ -242,10 +251,7 @@ const TransactionRow = ({
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
     >
-      <View
-        key={item.id}
-        className="flex-1 py-2.5 mx-5 flex flex-row items-center border-b border-slate-300/30 justify-between"
-      >
+      <View className="py-2.5 mx-5 flex flex-row items-center border-b border-slate-300/30 justify-between">
         {/* Left: icon + title + category label */}
         <View className="flex flex-row items-center gap-3">
           <View
@@ -489,9 +495,10 @@ export default function AllTransactions() {
           style={{ flex: 1, backgroundColor: "#f5f6fa" }}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 110,
-            backgroundColor: "white",
+            backgroundColor: "#f5f6fa",
           }}
-          stickySectionHeadersEnabled
+          initialNumToRender={20}
+          windowSize={10}
           ListEmptyComponent={
             <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
               <Text style={{ fontSize: 32 }}>🔍</Text>
@@ -514,6 +521,7 @@ export default function AllTransactions() {
                 backgroundColor: "#f5f6fa",
                 paddingHorizontal: 20,
                 paddingVertical: 8,
+                marginTop: 4,
               }}
             >
               <Text
@@ -539,10 +547,12 @@ export default function AllTransactions() {
             </View>
           )}
           renderItem={({ item }) => (
-            <TransactionRow
-              item={item}
-              onPress={() => router.push("/(others)/(transaction)/editForm")}
-            />
+            <View style={{ backgroundColor: "white" }}>
+              <TransactionRow
+                item={item}
+                onPress={() => router.push("/(others)/(transaction)/editForm")}
+              />
+            </View>
           )}
         />
       </View>
