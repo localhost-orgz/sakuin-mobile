@@ -6,9 +6,17 @@
  * pre-filled with that category's data. The Edit sheet has "Simpan Perubahan"
  * and "Hapus Kategori" buttons. Delete shows an Alert before proceeding.
  * The Add (+) button reuses the original AddCategoryModal.
+ *
+ * Theme picker is now fully dynamic via useWalletTheme (same as AddGoal.tsx).
  */
 
 import { MONEY_TRACKER_EMOJIS } from "@/constants/emojiList";
+import {
+  WalletTheme,
+  WalletThemeId,
+  getWalletTheme,
+  getWalletThemeIds,
+} from "@/hooks/useWalletTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
@@ -44,98 +52,40 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
-// ─── Theme definitions ────────────────────────────────────────────────────────
-const CATEGORY_THEMES = [
-  {
-    id: "green",
-    label: "Mint",
-    gradient: ["#22c55e", "#16a34a"] as [string, string],
-    accent: "#22c55e",
-  },
-  {
-    id: "blue",
-    label: "Ocean",
-    gradient: ["#3b82f6", "#2563eb"] as [string, string],
-    accent: "#3b82f6",
-  },
-  {
-    id: "violet",
-    label: "Purple",
-    gradient: ["#8b5cf6", "#7c3aed"] as [string, string],
-    accent: "#8b5cf6",
-  },
-  {
-    id: "orange",
-    label: "Sunset",
-    gradient: ["#f97316", "#ea580c"] as [string, string],
-    accent: "#f97316",
-  },
-  {
-    id: "rose",
-    label: "Rose",
-    gradient: ["#f43f5e", "#e11d48"] as [string, string],
-    accent: "#f43f5e",
-  },
-];
-
 // ─── Category type ────────────────────────────────────────────────────────────
 type Category = {
   id: string;
   icon: string;
   label: string;
-  bg: string;
-  themeId: string;
+  themeId: WalletThemeId;
 };
 
 // ─── Initial category list ────────────────────────────────────────────────────
 const INITIAL_CATEGORIES: Category[] = [
-  {
-    id: "1",
-    icon: "🍔",
-    label: "Food & Beverage",
-    bg: "#dcfce7",
-    themeId: "green",
-  },
-  { id: "2", icon: "🎮", label: "Gaming", bg: "#ede9fe", themeId: "violet" },
-  { id: "3", icon: "🚕", label: "Transport", bg: "#dbeafe", themeId: "blue" },
-  { id: "4", icon: "🛍️", label: "Shopping", bg: "#fce7f3", themeId: "rose" },
-  {
-    id: "5",
-    icon: "💊",
-    label: "Health & Fitness",
-    bg: "#dcfce7",
-    themeId: "green",
-  },
-  {
-    id: "6",
-    icon: "▶️",
-    label: "Entertainment",
-    bg: "#dbeafe",
-    themeId: "blue",
-  },
-  {
-    id: "7",
-    icon: "🧾",
-    label: "Bills & Utilities",
-    bg: "#ffedd5",
-    themeId: "orange",
-  },
-  { id: "8", icon: "📚", label: "Education", bg: "#ede9fe", themeId: "violet" },
+  { id: "1", icon: "🍔", label: "Food & Beverage", themeId: "forest" },
+  { id: "2", icon: "🎮", label: "Gaming", themeId: "violet" },
+  { id: "3", icon: "🚕", label: "Transport", themeId: "ocean" },
+  { id: "4", icon: "🛍️", label: "Shopping", themeId: "rose" },
+  { id: "5", icon: "💊", label: "Health & Fitness", themeId: "forest" },
+  { id: "6", icon: "▶️", label: "Entertainment", themeId: "indigo" },
+  { id: "7", icon: "🧾", label: "Bills & Utilities", themeId: "ember" },
+  { id: "8", icon: "📚", label: "Education", themeId: "violet" },
 ];
 
-// ─── ThemeCircle ──────────────────────────────────────────────────────────────
+// ─── ThemeCircle — now driven by WalletTheme ─────────────────────────────────
 const ThemeCircle = ({
   theme,
   selected,
   onPress,
   revealAnim,
 }: {
-  theme: (typeof CATEGORY_THEMES)[0];
+  theme: WalletTheme;
   selected: boolean;
   onPress: () => void;
   revealAnim: Animated.Value;
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
+
   const handlePress = () => {
     Animated.sequence([
       Animated.timing(scale, {
@@ -152,6 +102,7 @@ const ThemeCircle = ({
     ]).start();
     onPress();
   };
+
   return (
     <Animated.View
       style={{
@@ -170,20 +121,18 @@ const ThemeCircle = ({
       }}
     >
       <Pressable onPress={handlePress}>
-        <LinearGradient
-          colors={theme.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
             width: 48,
             height: 48,
             borderRadius: 999,
+            backgroundColor: theme.accentColor,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           {selected && <Check size={16} color="white" strokeWidth={3} />}
-        </LinearGradient>
+        </View>
         {selected && (
           <View
             style={{
@@ -194,7 +143,7 @@ const ThemeCircle = ({
               bottom: -4,
               borderRadius: 999,
               borderWidth: 2.5,
-              borderColor: theme.accent,
+              borderColor: theme.accentColor,
             }}
           />
         )}
@@ -203,7 +152,7 @@ const ThemeCircle = ({
         style={{
           fontSize: 10,
           fontWeight: selected ? "700" : "500",
-          color: selected ? theme.accent : "#94a3b8",
+          color: selected ? theme.accentColor : "#94a3b8",
         }}
       >
         {theme.label}
@@ -227,33 +176,38 @@ const CategorySheet = ({
   mode: SheetMode;
   initialData?: Category;
   onClose: () => void;
-  onSave: (data: { name: string; icon: string; themeId: string }) => void;
+  onSave: (data: {
+    name: string;
+    icon: string;
+    themeId: WalletThemeId;
+  }) => void;
   onDelete?: () => void;
 }) => {
+  const allThemeIds = getWalletThemeIds();
+
   const [catName, setCatName] = useState(initialData?.label ?? "");
   const [catEmoji, setCatEmoji] = useState(initialData?.icon ?? "");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState(
-    CATEGORY_THEMES.find((t) => t.id === initialData?.themeId) ??
-      CATEGORY_THEMES[0],
+  const [selectedThemeId, setSelectedThemeId] = useState<WalletThemeId>(
+    initialData?.themeId ?? allThemeIds[0],
   );
   const [activeField, setActiveField] = useState<"name" | "emoji" | null>(null);
 
-  // Reset when initialData or mode changes
+  const selectedTheme = getWalletTheme(selectedThemeId);
+
+  // Reset when sheet opens
   useEffect(() => {
     if (visible) {
       setCatName(initialData?.label ?? "");
       setCatEmoji(initialData?.icon ?? "");
-      setSelectedTheme(
-        CATEGORY_THEMES.find((t) => t.id === initialData?.themeId) ??
-          CATEGORY_THEMES[0],
-      );
+      setSelectedThemeId(initialData?.themeId ?? allThemeIds[0]);
       setShowEmojiPicker(false);
       setEmojiSearch("");
     }
   }, [visible, initialData]);
 
+  // Animations
   const slideAnim = useRef(new Animated.Value(600)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const inputReveal = useRef(new Animated.Value(0)).current;
@@ -384,13 +338,14 @@ const CategorySheet = ({
     letterSpacing: 1,
     marginBottom: 8,
   };
-  const INPUT_CONTAINER = (focused: boolean, accent: string) => ({
+
+  const INPUT_CONTAINER = (focused: boolean) => ({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     backgroundColor: "#f8fafc",
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: focused ? accent : "#e2e8f0",
+    borderColor: focused ? selectedTheme.accentColor : "#e2e8f0",
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 10,
@@ -476,12 +431,16 @@ const CategorySheet = ({
                   width: 40,
                   height: 40,
                   borderRadius: 14,
-                  backgroundColor: `${selectedTheme.accent}15`,
+                  backgroundColor: `${selectedTheme.iconBgColor}`,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Tag size={18} color={selectedTheme.accent} strokeWidth={2.5} />
+                <Tag
+                  size={18}
+                  color={selectedTheme.accentColor}
+                  strokeWidth={2.5}
+                />
               </View>
               <View>
                 <Text
@@ -530,12 +489,7 @@ const CategorySheet = ({
           >
             <View style={{ flex: 1 }}>
               <Text style={LABEL_STYLE}>Category Name</Text>
-              <View
-                style={INPUT_CONTAINER(
-                  activeField === "name",
-                  selectedTheme.accent,
-                )}
-              >
+              <View style={INPUT_CONTAINER(activeField === "name")}>
                 <Tag size={16} color="#94a3b8" />
                 <TextInput
                   value={catName}
@@ -570,10 +524,12 @@ const CategorySheet = ({
                   borderRadius: 16,
                   borderWidth: 1.5,
                   borderColor:
-                    activeField === "emoji" ? selectedTheme.accent : "#e2e8f0",
+                    activeField === "emoji"
+                      ? selectedTheme.accentColor
+                      : "#e2e8f0",
                   backgroundColor:
                     activeField === "emoji"
-                      ? `${selectedTheme.accent}10`
+                      ? `${selectedTheme.accentColor}10`
                       : "#f8fafc",
                   alignItems: "center",
                   justifyContent: "center",
@@ -631,7 +587,7 @@ const CategorySheet = ({
                       style={{
                         fontSize: 11,
                         fontWeight: "800",
-                        color: selectedTheme.accent,
+                        color: selectedTheme.accentColor,
                         marginBottom: 10,
                         textTransform: "uppercase",
                         letterSpacing: 1,
@@ -656,11 +612,11 @@ const CategorySheet = ({
                               height: 58,
                               borderRadius: 16,
                               backgroundColor: sel
-                                ? `${selectedTheme.accent}15`
+                                ? `${selectedTheme.accentColor}15`
                                 : "#fff",
                               borderWidth: 1.5,
                               borderColor: sel
-                                ? selectedTheme.accent
+                                ? selectedTheme.accentColor
                                 : "#e2e8f0",
                               alignItems: "center",
                               justifyContent: "center",
@@ -677,7 +633,7 @@ const CategorySheet = ({
             </Animated.View>
           )}
 
-          {/* Theme picker */}
+          {/* ── Theme picker — now dynamic via useWalletTheme ── */}
           <Animated.View
             style={{
               opacity: themeReveal,
@@ -703,7 +659,7 @@ const CategorySheet = ({
               <Text style={LABEL_STYLE}>Category Theme</Text>
               <View
                 style={{
-                  backgroundColor: `${selectedTheme.accent}15`,
+                  backgroundColor: `${selectedTheme.accentColor}15`,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 999,
@@ -713,13 +669,15 @@ const CategorySheet = ({
                   style={{
                     fontSize: 11,
                     fontWeight: "700",
-                    color: selectedTheme.accent,
+                    color: "#fff",
                   }}
                 >
                   {selectedTheme.label}
                 </Text>
               </View>
             </View>
+
+            {/* Show first 6 themes in a row — same pattern as AddGoal */}
             <View
               style={{
                 flexDirection: "row",
@@ -727,15 +685,17 @@ const CategorySheet = ({
                 paddingHorizontal: 4,
               }}
             >
-              {CATEGORY_THEMES.map((theme) => (
-                <ThemeCircle
-                  key={theme.id}
-                  theme={theme}
-                  selected={selectedTheme.id === theme.id}
-                  onPress={() => setSelectedTheme(theme)}
-                  revealAnim={themeReveal}
-                />
-              ))}
+              {getWalletThemeIds()
+                .slice(0, 6)
+                .map((id) => (
+                  <ThemeCircle
+                    key={id}
+                    theme={getWalletTheme(id)}
+                    selected={selectedThemeId === id}
+                    onPress={() => setSelectedThemeId(id)}
+                    revealAnim={themeReveal}
+                  />
+                ))}
             </View>
           </Animated.View>
 
@@ -746,26 +706,26 @@ const CategorySheet = ({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-                backgroundColor: `${selectedTheme.accent}10`,
+                backgroundColor: `${selectedTheme.iconBgColor}`,
                 borderRadius: 18,
                 padding: 14,
                 borderWidth: 1,
-                borderColor: `${selectedTheme.accent}25`,
+                borderColor: `${selectedTheme.accentColor}25`,
                 marginBottom: 18,
               }}
             >
-              <LinearGradient
-                colors={selectedTheme.gradient}
+              <View
                 style={{
                   width: 52,
                   height: 52,
                   borderRadius: 999,
+                  backgroundColor: selectedTheme.accentColor,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <Text style={{ fontSize: 24 }}>{catEmoji || "🏷️"}</Text>
-              </LinearGradient>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text
                   style={{ fontSize: 15, fontWeight: "800", color: "#0f172a" }}
@@ -781,7 +741,7 @@ const CategorySheet = ({
                   paddingHorizontal: 10,
                   paddingVertical: 5,
                   borderRadius: 999,
-                  backgroundColor: selectedTheme.accent,
+                  backgroundColor: selectedTheme.accentColor,
                 }}
               >
                 <Text
@@ -796,14 +756,13 @@ const CategorySheet = ({
           {/* Action buttons */}
           {mode === "edit" ? (
             <View style={{ gap: 10 }}>
-              {/* Save changes */}
               <Pressable
                 disabled={!canSubmit}
                 onPress={() => {
                   onSave({
                     name: catName,
                     icon: catEmoji || "🏷️",
-                    themeId: selectedTheme.id,
+                    themeId: selectedThemeId,
                   });
                   handleClose();
                 }}
@@ -815,9 +774,11 @@ const CategorySheet = ({
                   paddingVertical: 16,
                   borderRadius: 18,
                   backgroundColor: canSubmit
-                    ? selectedTheme.accent
-                    : `${selectedTheme.accent}40`,
-                  shadowColor: canSubmit ? selectedTheme.accent : "transparent",
+                    ? selectedTheme.accentColor
+                    : `${selectedTheme.accentColor}40`,
+                  shadowColor: canSubmit
+                    ? selectedTheme.accentColor
+                    : "transparent",
                   shadowOpacity: 0.4,
                   shadowRadius: 12,
                   shadowOffset: { width: 0, height: 5 },
@@ -840,11 +801,9 @@ const CategorySheet = ({
                 </Text>
               </Pressable>
 
-              {/* Delete */}
               <Pressable
                 onPress={() => {
                   handleClose();
-                  // slight delay so sheet closes before Alert shows
                   setTimeout(() => {
                     Alert.alert(
                       "Hapus Kategori?",
@@ -881,14 +840,13 @@ const CategorySheet = ({
               </Pressable>
             </View>
           ) : (
-            // Add mode — single save button
             <Pressable
               disabled={!canSubmit}
               onPress={() => {
                 onSave({
                   name: catName,
                   icon: catEmoji || "🏷️",
-                  themeId: selectedTheme.id,
+                  themeId: selectedThemeId,
                 });
                 handleClose();
               }}
@@ -900,9 +858,11 @@ const CategorySheet = ({
                 paddingVertical: 16,
                 borderRadius: 18,
                 backgroundColor: canSubmit
-                  ? selectedTheme.accent
-                  : `${selectedTheme.accent}40`,
-                shadowColor: canSubmit ? selectedTheme.accent : "transparent",
+                  ? selectedTheme.accentColor
+                  : `${selectedTheme.accentColor}40`,
+                shadowColor: canSubmit
+                  ? selectedTheme.accentColor
+                  : "transparent",
                 shadowOpacity: 0.4,
                 shadowRadius: 12,
                 shadowOffset: { width: 0, height: 5 },
@@ -941,7 +901,6 @@ export default function ManageCategory() {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [search, setSearch] = useState("");
 
-  // Sheet state
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetMode, setSheetMode] = useState<SheetMode>("add");
   const [editingCategory, setEditingCategory] = useState<Category | undefined>(
@@ -969,16 +928,13 @@ export default function ManageCategory() {
   const handleSave = (data: {
     name: string;
     icon: string;
-    themeId: string;
+    themeId: WalletThemeId;
   }) => {
-    const theme =
-      CATEGORY_THEMES.find((t) => t.id === data.themeId) ?? CATEGORY_THEMES[0];
     if (sheetMode === "add") {
       const newCat: Category = {
         id: Date.now().toString(),
         label: data.name,
         icon: data.icon,
-        bg: `${theme.accent}22`,
         themeId: data.themeId,
       };
       setCategories((prev) => [...prev, newCat]);
@@ -986,13 +942,7 @@ export default function ManageCategory() {
       setCategories((prev) =>
         prev.map((c) =>
           c.id === editingCategory.id
-            ? {
-                ...c,
-                label: data.name,
-                icon: data.icon,
-                bg: `${theme.accent}22`,
-                themeId: data.themeId,
-              }
+            ? { ...c, label: data.name, icon: data.icon, themeId: data.themeId }
             : c,
         ),
       );
@@ -1009,7 +959,7 @@ export default function ManageCategory() {
     <>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
-        {/* ── Pinned green header ───────────────────────────────────────── */}
+        {/* ── Pinned green header ── */}
         <LinearGradient
           colors={["#00bf71", "#009e5f"]}
           start={{ x: 0, y: 0 }}
@@ -1020,7 +970,6 @@ export default function ManageCategory() {
             paddingHorizontal: 20,
           }}
         >
-          {/* Top row */}
           <View
             style={{
               flexDirection: "row",
@@ -1047,7 +996,6 @@ export default function ManageCategory() {
               Categories
             </Text>
 
-            {/* Add button */}
             <TouchableOpacity
               onPress={openAdd}
               style={{
@@ -1098,7 +1046,7 @@ export default function ManageCategory() {
           </View>
         </LinearGradient>
 
-        {/* ── Count strip ──────────────────────────────────────────────── */}
+        {/* ── Count strip ── */}
         <View
           style={{
             flexDirection: "row",
@@ -1135,7 +1083,7 @@ export default function ManageCategory() {
           </Pressable>
         </View>
 
-        {/* ── Category list ─────────────────────────────────────────────── */}
+        {/* ── Category list ── */}
         <FlatList
           data={filteredCategories}
           keyExtractor={(item) => item.id}
@@ -1159,9 +1107,8 @@ export default function ManageCategory() {
             </View>
           }
           renderItem={({ item }) => {
-            const theme =
-              CATEGORY_THEMES.find((t) => t.id === item.themeId) ??
-              CATEGORY_THEMES[0];
+            // Derive colors live from useWalletTheme
+            const theme = getWalletTheme(item.themeId);
 
             return (
               <Pressable
@@ -1169,7 +1116,6 @@ export default function ManageCategory() {
                 style={({ pressed }) => ({
                   marginHorizontal: 16,
                   marginTop: 14,
-                  borderRadius: 24,
                   overflow: "hidden",
                   transform: [{ scale: pressed ? 0.985 : 1 }],
                 })}
@@ -1179,51 +1125,27 @@ export default function ManageCategory() {
                     backgroundColor: "white",
                     borderRadius: 24,
                     padding: 16,
-
                     shadowColor: "#000",
                     shadowOpacity: 0.05,
                     shadowRadius: 14,
                     shadowOffset: { width: 0, height: 6 },
                     elevation: 3,
-
                     borderWidth: 1,
                     borderColor: "#f1f5f9",
                   }}
                 >
-                  {/* top accent */}
-                  <LinearGradient
-                    colors={[`${theme.accent}22`, `${theme.accent}05`]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 5,
-                    }}
-                  />
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                    }}
-                  >
-                    {/* icon */}
-                    <LinearGradient
-                      colors={theme.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {/* Icon */}
+                    <View
                       style={{
                         width: 58,
                         height: 58,
                         borderRadius: 20,
+                        backgroundColor: theme.iconBgColor,
                         alignItems: "center",
                         justifyContent: "center",
                         marginRight: 16,
-
-                        shadowColor: theme.accent,
+                        shadowColor: theme.accentColor,
                         shadowOpacity: 0.25,
                         shadowRadius: 10,
                         shadowOffset: { width: 0, height: 5 },
@@ -1231,9 +1153,9 @@ export default function ManageCategory() {
                       }}
                     >
                       <Text style={{ fontSize: 28 }}>{item.icon}</Text>
-                    </LinearGradient>
+                    </View>
 
-                    {/* text */}
+                    {/* Text */}
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
@@ -1245,7 +1167,6 @@ export default function ManageCategory() {
                       >
                         {item.label}
                       </Text>
-
                       <View
                         style={{
                           flexDirection: "row",
@@ -1258,10 +1179,9 @@ export default function ManageCategory() {
                             width: 8,
                             height: 8,
                             borderRadius: 999,
-                            backgroundColor: theme.accent,
+                            backgroundColor: theme.accentColor,
                           }}
                         />
-
                         <Text
                           style={{
                             fontSize: 12,
@@ -1274,20 +1194,20 @@ export default function ManageCategory() {
                       </View>
                     </View>
 
-                    {/* right action */}
+                    {/* Chevron */}
                     <View
                       style={{
                         width: 42,
                         height: 42,
                         borderRadius: 16,
-                        backgroundColor: `${theme.accent}12`,
+                        backgroundColor: `transparent`,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
                       <ChevronRight
                         size={18}
-                        color={theme.accent}
+                        color={theme.accentColor}
                         strokeWidth={2.8}
                       />
                     </View>
@@ -1299,7 +1219,7 @@ export default function ManageCategory() {
         />
       </View>
 
-      {/* ── Category Sheet (Add / Edit) ───────────────────────────────────── */}
+      {/* ── Category Sheet (Add / Edit) ── */}
       <CategorySheet
         visible={sheetVisible}
         mode={sheetMode}
