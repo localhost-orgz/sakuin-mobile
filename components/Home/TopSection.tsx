@@ -119,11 +119,15 @@ export const ScrollableTopContent = ({
   isBalanceShow,
   setIsBalanceShow,
   wallets = [],
+  transactions = [],
+  user = null,
   loading,
 }: {
   isBalanceShow: boolean;
   setIsBalanceShow: (v: boolean) => void;
   wallets: any[];
+  transactions?: any[];
+  user?: any;
   loading?: boolean;
 }) => {
   const flatListRef = useRef<FlatList>(null);
@@ -241,7 +245,11 @@ export const ScrollableTopContent = ({
       </View>
 
       {/* Income / Expense card — floats below */}
-      <IncomeExpenseCard isBalanceShow={isBalanceShow} />
+      <IncomeExpenseCard
+        isBalanceShow={isBalanceShow}
+        transactions={transactions}
+        user={user}
+      />
     </View>
   );
 };

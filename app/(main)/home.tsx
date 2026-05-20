@@ -137,60 +137,47 @@ export default function Home() {
       const categoriesList = catsRes.data;
       const walletsList = walletsRes.data;
 
-      // 10 Random transactions data
-      const names = [
-        "GoFood Dinner", "Indomaret Snacks", "Gas Station Petrol",
-        "Salary Bonus", "Electricity Bill", "Cinema Tickets",
-        "Coffee Shop Latte", "Gym Membership", "Book Store",
-        "Freelance Payment"
+      // Transactions for currentMonth (May 2026) totaling 15,000,000 IDR
+      const mayTransactions = [
+        { name: "Salary Payment", amount: "5000000", type: "income", description: "Monthly corporate salary payout", date: "2026-05-01" },
+        { name: "Rent & Housing", amount: "3500000", type: "expense", description: "Apartment rental cost", date: "2026-05-03" },
+        { name: "Freelance Project", amount: "4000000", type: "income", description: "Web app development milestone", date: "2026-05-10" },
+        { name: "Groceries & Supplies", amount: "1500000", type: "expense", description: "Monthly supermarket groceries", date: "2026-05-15" },
+        { name: "Weekend Dinner", amount: "1000000", type: "expense", description: "Fine dining restaurant bill", date: "2026-05-24" }
       ];
 
-      const descriptions = [
-        "Ordered McDonald's with friends", "Bought snacks and sodas", "Filled up motorcycle tank",
-        "Monthly performance bonus", "Paid PLN token", "Watched latest action movie",
-        "Ice caramel macchiato", "Monthly subscription", "Bought React Native programming book",
-        "UI design project milestone 1"
+      // Transactions for lastMonth (April 2026) totaling 10,000,000 IDR
+      const aprilTransactions = [
+        { name: "Dividends Payout", amount: "3000000", type: "income", description: "Quarterly stock market dividend", date: "2026-04-05" },
+        { name: "Electricity & WiFi", amount: "1500000", type: "expense", description: "Home utilities bill payment", date: "2026-04-12" },
+        { name: "Consulting Gig", amount: "4000000", type: "income", description: "Technical architecture consulting", date: "2026-04-18" },
+        { name: "Gym Membership", amount: "1500000", type: "expense", description: "Annual premium gym subscription", date: "2026-04-26" }
       ];
 
-      const types = [
-        "expense", "expense", "expense",
-        "income", "expense", "expense",
-        "expense", "expense", "expense",
-        "income"
-      ];
-
-      const amounts = [
-        "75000", "42000", "50000",
-        "1500000", "200000", "85000",
-        "48000", "350000", "125000",
-        "2500000"
-      ];
+      const allSeedTxs = [...mayTransactions, ...aprilTransactions];
 
       // Call API sequentially or in parallel
-      const seedPromises = Array.from({ length: 10 }).map((_, i) => {
-        const cat = categoriesList[i % categoriesList.length];
-        const wallet = walletsList[i % walletsList.length];
-        const randomDate = new Date();
-        randomDate.setDate(randomDate.getDate() - (i + 1)); // last 10 days
-        const dateStr = randomDate.toISOString().split("T")[0]; // YYYY-MM-DD
+      const seedPromises = allSeedTxs.map((item, idx) => {
+        const cat = categoriesList[idx % categoriesList.length];
+        const wallet = walletsList[idx % walletsList.length];
 
         return apiRequest("/transaction", {
           method: "POST",
           body: {
             category_id: cat._id || cat.id,
             wallet_id: wallet._id || wallet.id,
-            amount: amounts[i],
-            type: types[i],
-            name: names[i],
-            description: descriptions[i],
-            date: dateStr,
+            amount: item.amount,
+            type: item.type,
+            name: item.name,
+            description: item.description,
+            date: item.date,
             input_method: "manual"
           }
         });
       });
 
       await Promise.all(seedPromises);
-      alert("Successfully seeded 10 transactions!");
+      alert("Successfully seeded transactions for May (15M) and April (10M)!");
       await fetchTransactions(); // Refresh the list!
     } catch (err: any) {
       console.error("Failed to seed transactions:", err);
@@ -262,6 +249,8 @@ export default function Home() {
           isBalanceShow={isBalanceShow}
           setIsBalanceShow={setIsBalanceShow}
           wallets={wallets}
+          transactions={transactions}
+          user={user}
           loading={loading}
         />
 
@@ -287,7 +276,7 @@ export default function Home() {
               }}
             >
               <Text style={{ color: "white", fontSize: 15, fontWeight: "600" }}>
-                {seeding ? "Seeding 10 Transactions..." : "⚡ Seed 10 Random Transactions"}
+                {seeding ? "Seeding Transactions..." : "⚡ Seed May (15M) & April (10M) Transactions"}
               </Text>
             </TouchableOpacity>
           </View>
