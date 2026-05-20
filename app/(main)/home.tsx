@@ -18,6 +18,7 @@ import {
 } from "@/components/Home/TopSection";
 import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
+import { useFocusEffect } from "expo-router";
 import { apiRequest } from "@/utils/api";
 
 export default function Home() {
@@ -95,9 +96,11 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    initHomeData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      initHomeData();
+    }, [])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

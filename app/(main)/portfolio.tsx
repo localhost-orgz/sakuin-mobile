@@ -17,7 +17,7 @@ export default function PortfolioScreen() {
   const [loading, setLoading] = useState(true); // State loading
   const insets = useSafeAreaInsets();
 
-  const fetchWallets = async () => {
+  const fetchWallets = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiRequest("/wallets", { method: "GET" }); //
@@ -29,11 +29,13 @@ export default function PortfolioScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchWallets();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchWallets();
+    }, [fetchWallets])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

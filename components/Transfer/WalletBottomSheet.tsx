@@ -1,4 +1,3 @@
-import { WALLET_LIST } from "@/constants/walletList";
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import React, { forwardRef, useMemo } from "react";
 import { Text, View } from "react-native";
@@ -6,12 +5,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import WalletItem from "./WalletItem";
 
 interface Props {
+  wallets: any[];
   selectedWallet: any;
   onSelect: (item: any) => void;
 }
 
 const WalletBottomSheet = forwardRef<BottomSheet, Props>(
-  ({ selectedWallet, onSelect }, ref) => {
+  ({ wallets = [], selectedWallet, onSelect }, ref) => {
     const snapPoints = useMemo(() => ["50%"], []);
     const insets = useSafeAreaInsets();
 
@@ -41,8 +41,8 @@ const WalletBottomSheet = forwardRef<BottomSheet, Props>(
         }}
       >
         <BottomSheetFlatList
-          data={WALLET_LIST}
-          keyExtractor={(item: any) => item.id}
+          data={wallets}
+          keyExtractor={(item: any) => item._id || item.id}
           stickyHeaderIndices={[0]}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 40,

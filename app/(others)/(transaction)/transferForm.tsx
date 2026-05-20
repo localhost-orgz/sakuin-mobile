@@ -1,7 +1,7 @@
 import useWalletTheme from "@/hooks/useWalletTheme";
 import { useRouter } from "expo-router";
 import { ArrowDownUp, CheckCircle2, ChevronDown } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Animated,
   Dimensions,
@@ -11,6 +11,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,7 +21,7 @@ import HeaderTransfer from "@/components/Transfer/HeaderTransition";
 import MiniWalletCard from "@/components/Transfer/MiniWalletCard";
 import NoteSection from "@/components/Transfer/NoteSection";
 import WalletBottomSheet from "@/components/Transfer/WalletBottomSheet";
-import { WALLET_LIST } from "@/constants/walletList";
+import { apiRequest } from "@/utils/api";
 import type { WalletThemeId } from "@/hooks/useWalletTheme";
 import BottomSheet from "@gorhom/bottom-sheet";
 
@@ -114,19 +116,71 @@ export default function TransferPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [fromWallet, setFromWallet] = useState(WALLET_LIST[0]);
-  const [toWallet, setToWallet] = useState(WALLET_LIST[1]);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const fromWalletBottomSheet = useRef<BottomSheet>(null);
   const toWalletBottomSheet = useRef<BottomSheet>(null);
-  const [selectedFromWallet, setSelectedFromWallet] = useState(
-    WALLET_LIST.find((w) => w.bank === "BCA") ?? WALLET_LIST[0],
-  );
-  const [selectedToWallet, setSelectedToWallet] = useState(
-    WALLET_LIST.find((w) => w.bank === "BCA") ?? WALLET_LIST[0],
-  );
+
+  const [selectedFromWallet, setSelectedFromWallet] = useState<any>(null);
+  const [selectedToWallet, setSelectedToWallet] = useState<any>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [walletsRes, categoriesRes] = await Promise.all([
+          apiRequest("/wallets", { method: "GET" }),
+          apiRequest("/categories", { method: "GET" }),
+        ]);
+
+        let rawWallets = [];
+        if (walletsRes?.status === "success" && walletsRes?.data) {
+          rawWallets = walletsRes.data;
+        } else if (Array.isArray(walletsRes)) {
+          rawWallets = walletsRes;
+        }
+
+        let rawCats = [];
+        if (categoriesRes?.status === "success" && categoriesRes?.data) {
+          rawCats = categoriesRes.data;
+        } else if (Array.isArray(categoriesRes)) {
+          rawCats = categoriesRes;
+        }
+
+        setCategories(rawCats);
+
+        // Normalize wallet formats
+        const mappedWallets = rawWallets.map((w: any) => ({
+          id: w._id || w.id,
+          bank: w.name || "Unnamed",
+          type: w.type || "E-Wallet",
+          balance: new Intl.NumberFormat("id-ID").format(w.balance || 0),
+          rawBalance: w.balance || 0,
+          themeId: (w.color || "ocean").toLowerCase() as WalletThemeId,
+        }));
+
+        setWallets(mappedWallets);
+
+        if (mappedWallets.length > 0) {
+          setSelectedFromWallet(mappedWallets[0]);
+          setSelectedToWallet(mappedWallets[1] || mappedWallets[0]);
+        }
+      } catch (err) {
+        console.error("Failed to load transfer page data:", err);
+        Alert.alert("Error", "Gagal memuat data dompet.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const openFromWalletSheet = () => {
     fromWalletBottomSheet.current?.expand();
@@ -151,16 +205,125 @@ export default function TransferPage() {
   };
 
   const swapWallets = () => {
+    const temp = selectedFromWallet;
     setSelectedFromWallet(selectedToWallet);
-    setSelectedToWallet(selectedFromWallet);
+    setSelectedToWallet(temp);
   };
 
-  const fromTheme = useWalletTheme(fromWallet.themeId as WalletThemeId);
-  const toTheme = useWalletTheme(toWallet.themeId as WalletThemeId);
+  const fromTheme = useWalletTheme((selectedFromWallet?.themeId || "ocean") as WalletThemeId);
+  const toTheme = useWalletTheme((selectedToWallet?.themeId || "ocean") as WalletThemeId);
 
   const canSubmit =
     amount.length > 0 &&
     parseFloat(amount.replace(/\./g, "").replace(",", ".")) > 0;
+
+  const handleTransfer = async () => {
+    if (!selectedFromWallet || !selectedToWallet) {
+      Alert.alert("Error", "Silakan pilih wallet asal dan tujuan.");
+      return;
+    }
+
+    const fromId = selectedFromWallet.id;
+    const toId = selectedToWallet.id;
+
+    if (fromId === toId) {
+      Alert.alert("Error", "Wallet asal dan tujuan tidak boleh sama.");
+      return;
+    }
+
+    const cleanAmountString = amount.replace(/\./g, "").replace(",", ".");
+    const parsedAmount = parseFloat(cleanAmountString);
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert("Error", "Jumlah nominal harus lebih dari 0.");
+      return;
+    }
+
+    // CHECK: Check if selectedFromWallet has enough money to transfer.
+    if (parsedAmount > selectedFromWallet.rawBalance) {
+      Alert.alert(
+        "Saldo Tidak Cukup",
+        `Saldo ${selectedFromWallet.bank} Anda (Rp${selectedFromWallet.balance}) tidak mencukupi untuk melakukan transfer sebesar Rp${amount}.`
+      );
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // Find transfer category or fallback to others
+      let transferCategory = categories.find((c: any) => {
+        const name = (c.name || c.label || "").toLowerCase();
+        return name.includes("transfer") || name.includes("pindahan") || name.includes("kirim");
+      });
+
+      if (!transferCategory) {
+        transferCategory = categories.find((c: any) => {
+          const name = (c.name || c.label || "").toLowerCase();
+          return name.includes("lain") || name.includes("other");
+        });
+      }
+
+      const categoryId = transferCategory
+        ? (transferCategory._id || transferCategory.id)
+        : (categories[0]?._id || categories[0]?.id || "6a02f8a7de59afc0c23a95c9");
+
+      // Format date
+      const formatDateForApi = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const today = formatDateForApi(new Date());
+
+      // Create two transactions: one expense from source wallet, one income to destination wallet
+      await Promise.all([
+        apiRequest("/transaction", {
+          method: "POST",
+          body: {
+            category_id: categoryId,
+            wallet_id: fromId,
+            amount: cleanAmountString,
+            type: "expense",
+            name: `Transfer ke ${selectedToWallet.bank}`,
+            description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
+            date: today,
+            input_method: "manual",
+          },
+        }),
+        apiRequest("/transaction", {
+          method: "POST",
+          body: {
+            category_id: categoryId,
+            wallet_id: toId,
+            amount: cleanAmountString,
+            type: "income",
+            name: `Transfer dari ${selectedFromWallet.bank}`,
+            description: note || `Transfer saldo dari ${selectedFromWallet.bank}`,
+            date: today,
+            input_method: "manual",
+          },
+        }),
+      ]);
+
+      setShowSuccess(true);
+    } catch (err: any) {
+      console.error("Transfer error:", err);
+      Alert.alert("Gagal", err.message || "Gagal melakukan transfer.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -294,7 +457,7 @@ export default function TransferPage() {
                 <Text
                   style={{ fontSize: 13, fontWeight: "700", color: "#1a1f36" }}
                 >
-                  {fromWallet.bank} ({fromWallet.type})
+                  {selectedFromWallet?.bank} ({selectedFromWallet?.type})
                 </Text>
               </View>
               <View
@@ -307,7 +470,7 @@ export default function TransferPage() {
                 <Text
                   style={{ fontSize: 13, fontWeight: "700", color: "#1a1f36" }}
                 >
-                  {toWallet.bank} ({toWallet.type})
+                  {selectedToWallet?.bank} ({selectedToWallet?.type})
                 </Text>
               </View>
               <View style={{ height: 1, backgroundColor: "#d1fae5" }} />
@@ -346,29 +509,34 @@ export default function TransferPage() {
           }}
         >
           <TouchableOpacity
-            onPress={() => canSubmit && setShowSuccess(true)}
-            activeOpacity={canSubmit ? 0.85 : 1}
+            onPress={() => canSubmit && !submitting && handleTransfer()}
+            disabled={!canSubmit || submitting}
+            activeOpacity={canSubmit && !submitting ? 0.85 : 1}
             style={{
-              backgroundColor: canSubmit ? "#00bf71" : "#e5e7eb",
+              backgroundColor: (canSubmit && !submitting) ? "#00bf71" : "#e5e7eb",
               borderRadius: 20,
               paddingVertical: 17,
               alignItems: "center",
-              shadowColor: canSubmit ? "#00bf71" : "transparent",
+              shadowColor: (canSubmit && !submitting) ? "#00bf71" : "transparent",
               shadowOpacity: 0.35,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
-              elevation: canSubmit ? 6 : 0,
+              elevation: (canSubmit && !submitting) ? 6 : 0,
             }}
           >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "800",
-                color: canSubmit ? "white" : "#9ca3af",
-              }}
-            >
-              {canSubmit ? `Transfer Rp${amount}` : "Enter Amount"}
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text
+                style={{
+                  fontSize: 17,
+                  fontWeight: "800",
+                  color: (canSubmit && !submitting) ? "white" : "#9ca3af",
+                }}
+              >
+                {canSubmit ? `Transfer Rp${amount}` : "Enter Amount"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -376,19 +544,21 @@ export default function TransferPage() {
       {/* ── Modals ── */}
       <WalletBottomSheet
         ref={fromWalletBottomSheet}
+        wallets={wallets}
         selectedWallet={selectedFromWallet}
         onSelect={handleSelectFromWallet}
       />
       <WalletBottomSheet
         ref={toWalletBottomSheet}
+        wallets={wallets}
         selectedWallet={selectedToWallet}
         onSelect={handleSelectToWallet}
       />
       <SuccessModal
         visible={showSuccess}
         amount={amount}
-        from={fromWallet}
-        to={toWallet}
+        from={selectedFromWallet}
+        to={selectedToWallet}
         onClose={() => {
           setShowSuccess(false);
           router.back();
