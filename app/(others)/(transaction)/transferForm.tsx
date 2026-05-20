@@ -293,7 +293,7 @@ export default function TransferPage() {
             category_id: categoryId,
             wallet_id: fromId,
             amount: cleanAmountString,
-            type: "expense",
+            type: "transfer",
             name: `Transfer ke ${selectedToWallet.bank}`,
             description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
             date: today,
