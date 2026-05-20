@@ -1,8 +1,52 @@
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import HomeSectionHeader from "./HomeSectionHeader";
+import { Skeleton } from "@/components/Skeleton";
 
-const TopSpendCategory = ({ TopCategories }: any) => {
+const TopSpendCategory = ({ TopCategories, loading }: any) => {
+  if (loading) {
+    return (
+      <View className="px-5">
+        <HomeSectionHeader title="Top Spending Category" href={"/analytics"} />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 12, paddingRight: 4, paddingTop: 8 }}
+        >
+          {Array.from({ length: 5 }).map((_, index) => (
+            <View
+              key={index}
+              style={{
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Skeleton
+                width={50}
+                height={50}
+                borderRadius={11}
+                style={{ backgroundColor: "#cbd5e1" }}
+              />
+              <Skeleton
+                width={45}
+                height={10}
+                borderRadius={3}
+                style={{ backgroundColor: "#cbd5e1" }}
+              />
+              <Skeleton
+                width={55}
+                height={14}
+                borderRadius={20}
+                style={{ backgroundColor: "#cbd5e1" }}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View className="px-5">
       <HomeSectionHeader title="Top Spending Category" href={"/analytics"} />

@@ -2,6 +2,7 @@ import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Eye, EyeOff, WalletMinimal } from "lucide-react-native";
 import { Dimensions, Text, TouchableOpacity, View } from "react-native";
+import { Skeleton } from "@/components/Skeleton";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
@@ -192,6 +193,32 @@ const WalletCard = ({ item, isBalanceShow, onBalanceShow }: any) => {
           </Text>
         </View>
       </LinearGradient>
+    </View>
+  );
+};
+
+export const WalletCardSkeleton = () => {
+  return (
+    <View style={{ width: CARD_WIDTH, height: 180, borderRadius: 15, backgroundColor: "#ffffff", padding: 18, justifyContent: "center", gap: 5, borderWidth: 1, borderColor: "#e2e8f0" }}>
+      {/* Bank + type */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Skeleton width={40} height={40} borderRadius={10} style={{ backgroundColor: "#cbd5e1" }} />
+        <View style={{ gap: 4 }}>
+          <Skeleton width={120} height={20} borderRadius={4} style={{ backgroundColor: "#cbd5e1" }} />
+          <Skeleton width={60} height={12} borderRadius={4} style={{ backgroundColor: "#cbd5e1" }} />
+        </View>
+      </View>
+
+      <View style={{ gap: 5 }}>
+        {/* Balance */}
+        <View style={{ marginTop: 20, gap: 6 }}>
+          <Skeleton width={50} height={10} borderRadius={3} style={{ backgroundColor: "#cbd5e1" }} />
+          <Skeleton width={180} height={28} borderRadius={6} style={{ backgroundColor: "#cbd5e1" }} />
+        </View>
+
+        {/* Transactions */}
+        <Skeleton width={220} height={12} borderRadius={3} style={{ backgroundColor: "#cbd5e1", marginTop: 8 }} />
+      </View>
     </View>
   );
 };

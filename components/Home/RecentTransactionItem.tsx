@@ -1,6 +1,7 @@
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import React from "react";
 import { Text, View } from "react-native";
+import { Skeleton } from "@/components/Skeleton";
 
 interface RecentTransactionItemProps {
   item: {
@@ -91,6 +92,54 @@ const RecentTransactionItem = ({ item }: RecentTransactionItemProps) => {
         <Text className="text-xs text-[#9ca3af]">
           {item.category_id?.name}
         </Text>
+      </View>
+    </View>
+  );
+};
+
+export const RecentTransactionItemSkeleton = () => {
+  return (
+    <View className="py-3 mx-5 flex flex-row items-center border-b border-slate-300/30 justify-between">
+      <View className="flex flex-row items-center gap-3">
+        {/* Lingkaran Icon / Emoticon Kategori */}
+        <Skeleton
+          width={45}
+          height={45}
+          borderRadius={22.5}
+          style={{ backgroundColor: "#cbd5e1" }}
+        />
+
+        {/* Info Nama Transaksi & Tanggal */}
+        <View className="flex flex-col gap-1.5">
+          <Skeleton
+            width={120}
+            height={16}
+            borderRadius={4}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+          <Skeleton
+            width={70}
+            height={12}
+            borderRadius={3}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+        </View>
+      </View>
+
+      {/* Info Nominal & Indikator Tipe Transaksi */}
+      <View className="flex flex-col items-end gap-1.5">
+        <Skeleton
+          width={90}
+          height={16}
+          borderRadius={4}
+          style={{ backgroundColor: "#cbd5e1" }}
+        />
+        <Skeleton
+          width={50}
+          height={12}
+          borderRadius={3}
+          style={{ backgroundColor: "#cbd5e1" }}
+        />
       </View>
     </View>
   );

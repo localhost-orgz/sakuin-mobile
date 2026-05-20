@@ -1,5 +1,6 @@
 import useWalletTheme from "@/hooks/useWalletTheme";
 import { Text, TouchableOpacity, View } from "react-native";
+import { Skeleton } from "@/components/Skeleton";
 
 const CardGoals = ({ goal }: any) => {
   const percentage = Math.min((goal.current / goal.target) * 100, 100);
@@ -153,6 +154,91 @@ const CardGoals = ({ goal }: any) => {
         </View>
       </View>
     </TouchableOpacity>
+  );
+};
+
+export const CardGoalsSkeleton = () => {
+  return (
+    <View
+      style={{
+        width: 250,
+        borderRadius: 10,
+        backgroundColor: "#ffffff",
+        padding: 16,
+        shadowColor: "#9ca3af",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        elevation: 4,
+        gap: 15,
+      }}
+    >
+      {/* Icon + Name */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Skeleton
+          width={40}
+          height={40}
+          borderRadius={7}
+          style={{ backgroundColor: "#cbd5e1" }}
+        />
+        <View style={{ flex: 1, gap: 5 }}>
+          <Skeleton
+            width={120}
+            height={16}
+            borderRadius={4}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+          <Skeleton
+            width={60}
+            height={10}
+            borderRadius={3}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+        </View>
+      </View>
+
+      {/* Balances */}
+      <View style={{ gap: 6, marginBottom: -5 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Skeleton
+            width={30}
+            height={8}
+            borderRadius={2}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+          <Skeleton
+            width={35}
+            height={8}
+            borderRadius={2}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+          <Skeleton
+            width={65}
+            height={14}
+            borderRadius={3}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+          <Skeleton
+            width={55}
+            height={12}
+            borderRadius={3}
+            style={{ backgroundColor: "#cbd5e1" }}
+          />
+        </View>
+      </View>
+
+      {/* Progress Bar */}
+      <View style={{ height: 5, backgroundColor: "#f3f4f6", borderRadius: 999 }}>
+        <Skeleton
+          width="40%"
+          height="100%"
+          borderRadius={999}
+          style={{ backgroundColor: "#cbd5e1" }}
+        />
+      </View>
+    </View>
   );
 };
 

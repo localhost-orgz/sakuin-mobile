@@ -3,7 +3,7 @@ import React from "react";
 import { Text, View, Pressable } from "react-native";
 import { Link } from "expo-router"; // Import Link untuk navigasi button bawah
 import HomeSectionHeader from "./HomeSectionHeader";
-import RecentTransactionItem from "./RecentTransactionItem";
+import RecentTransactionItem, { RecentTransactionItemSkeleton } from "./RecentTransactionItem";
 
 interface Transaction {
   _id: string;
@@ -22,9 +22,64 @@ interface Transaction {
 
 type RecentTransactionsProps = {
   transactions: Transaction[];
+  loading?: boolean;
 };
 
-const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
+const RecentTransactions = ({ transactions, loading }: RecentTransactionsProps) => {
+  if (loading) {
+    return (
+      <View className="">
+        <View className="px-5">
+          <HomeSectionHeader title="Latest Transactions" href={"/(others)/(transaction)/allTransactions"} />
+        </View>
+
+        <View
+          style={{
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 5,
+            },
+            shadowOpacity: 0.05,
+            shadowRadius: 3.84,
+            elevation: 2,
+          }}
+          className="flex flex-row bg-white py-2 mt-2 rounded-t-2xl border-b border-slate-300/30 justify-between items-center px-6"
+        >
+          <Text className="text-sm text-[#9ca3af]">Name</Text>
+          <Text className="text-sm text-[#9ca3af]">Amount</Text>
+        </View>
+
+        {/* Render Skeleton List Data */}
+        <View className="flex-col bg-white">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <RecentTransactionItemSkeleton key={index} />
+          ))}
+        </View>
+        
+        {/* Button Other Transactions Terintegrasi Link href */}
+        <Link href="/(others)/(transaction)/allTransactions" asChild>
+          <Pressable
+            style={{
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.05,
+              shadowRadius: 3.84,
+              elevation: 1,
+            }}
+            className="flex flex-row bg-white py-2.5 rounded-b-2xl border-b border-slate-300/30 justify-center items-center px-6 gap-1 active:opacity-70"
+          >
+            <Text className="text-sm text-[#9ca3af]">Other Transactions</Text>
+            <ChevronsRight color={"#9ca3af"} size={15} style={{ marginTop: 1 }} />
+          </Pressable>
+        </Link>
+      </View>
+    );
+  }
+
   return (
     <View className="">
       <View className="px-5">
