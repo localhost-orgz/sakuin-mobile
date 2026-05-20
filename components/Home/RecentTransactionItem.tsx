@@ -8,7 +8,7 @@ interface RecentTransactionItemProps {
     _id: string;
     name: string;
     amount: number;
-    type: "income" | "expense";
+    type: "income" | "expense" | "transfer";
     date: string;
     wallet_id: string;
     category_id: {
@@ -51,6 +51,7 @@ const RecentTransactionItem = ({ item }: RecentTransactionItemProps) => {
   );
 
   const isIncome = item.type === "income";
+  const isTransfer = item.type === "transfer";
 
   return (
     <View
@@ -82,10 +83,10 @@ const RecentTransactionItem = ({ item }: RecentTransactionItemProps) => {
       <View className="flex flex-col items-end">
         <Text 
           className={`text-md font-bold mb-0.5 ${
-            isIncome ? "text-emerald-500" : "text-red-500"
+            isIncome ? "text-emerald-500" : ( isTransfer ? "text-amber-500" : "text-red-500")
           }`}
         >
-          {isIncome ? `+${formatRupiah(item.amount)}` : `-${formatRupiah(item.amount)}`}
+          {isIncome ? `+${formatRupiah(item.amount)}` : ( isTransfer ? `${formatRupiah(item.amount) }` : `-${formatRupiah(item.amount) }`)}
         </Text>
         
         {/* Menampilkan kategori nama sebagai pelengkap context */}

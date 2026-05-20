@@ -288,34 +288,49 @@ export default function TransferPage() {
       const today = formatDateForApi(new Date());
 
       // Create two transactions: one expense from source wallet, one income to destination wallet
-      await Promise.all([
-        apiRequest("/transaction", {
-          method: "POST",
-          body: {
-            category_id: categoryId,
-            wallet_id: fromId,
-            amount: cleanAmountString,
-            type: "transfer",
-            name: `Transfer ke ${selectedToWallet.bank}`,
-            description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
-            date: today,
-            input_method: "manual",
-          },
-        }),
-        apiRequest("/transaction", {
-          method: "POST",
-          body: {
-            category_id: categoryId,
-            wallet_id: toId,
-            amount: cleanAmountString,
-            type: "income",
-            name: `Transfer dari ${selectedFromWallet.bank}`,
-            description: note || `Transfer saldo dari ${selectedFromWallet.bank}`,
-            date: today,
-            input_method: "manual",
-          },
-        }),
-      ]);
+      // await Promise.all([
+      //   apiRequest("/transaction", {
+      //     method: "POST",
+      //     body: {
+      //       category_id: categoryId,
+      //       wallet_id: fromId,
+      //       amount: cleanAmountString,
+      //       type: "transfer",
+      //       name: `Transfer ke ${selectedToWallet.bank}`,
+      //       description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
+      //       date: today,
+      //       input_method: "manual",
+      //     },
+      //   }),
+      //   apiRequest("/transaction", {
+      //     method: "POST",
+      //     body: {
+      //       category_id: categoryId,
+      //       wallet_id: toId,
+      //       amount: cleanAmountString,
+      //       type: "transfer",
+      //       name: `Transfer dari ${selectedFromWallet.bank}`,
+      //       description: note || `Transfer saldo dari ${selectedFromWallet.bank}`,
+      //       date: today,
+      //       input_method: "manual",
+      //     },
+      //   }),
+      // ]);
+
+      await apiRequest("/transaction", {
+        method: "POST",
+        body: {
+          category_id: categoryId,
+          wallet_id: fromId,          // Dompet asal
+          target_wallet_id: toId,     // Dompet tujuan (tangkap di backend)
+          amount: cleanAmountString,
+          type: "transfer",
+          name: `Transfer ke ${selectedToWallet.bank}`,
+          description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
+          date: today,
+          input_method: "manual",
+        },
+      });
 
       setShowSuccess(true);
     } catch (err: any) {

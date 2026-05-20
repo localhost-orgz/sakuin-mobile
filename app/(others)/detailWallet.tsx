@@ -9,11 +9,11 @@ import {
   ArrowLeftRight,
   ChevronLeft,
   Ellipsis,
-  MoveUpRight,
   Plus,
   Search,
   TrendingDown,
   TrendingUp,
+  MoveRight,
   WalletMinimal,
   Edit2,
   Trash2,
@@ -48,7 +48,7 @@ type Transaction = {
   _id: string;
   name: string;
   amount: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer";
   date: string;
   category_id: string | any;
 };
@@ -93,7 +93,33 @@ const TransactionItem = ({
   item: Transaction;
   symbol: string;
 }) => {
-  const isIn = item.type === "income";
+  // Tentukan warna latar belakang kontainer ikon berdasarkan tipe transaksi
+  let iconBgColor = "#f0fdf8"; // default income
+  if (item.type === "expense") {
+    iconBgColor = "#fef2f2";
+  } else if (item.type === "transfer") {
+    iconBgColor = "#fef9c3"; // Kuning muda untuk background transfer
+  }
+
+  // Tentukan label teks deskripsi di bawah nama transaksi
+  let typeLabel = "Pemasukan";
+  if (item.type === "expense") {
+    typeLabel = "Pengeluaran";
+  } else if (item.type === "transfer") {
+    typeLabel = "Transfer / Pindahan";
+  }
+
+  // Tentukan warna teks nominal dan tanda +/-
+  let amountColor = "#00bf71"; // hijau
+  let amountSign = "+";
+  if (item.type === "expense") {
+    amountColor = "#f43f5e"; // merah
+    amountSign = "-";
+  } else if (item.type === "transfer") {
+    amountColor = "#eab308"; // Kuning (amber-500) untuk transfer
+    amountSign = ""; // Biasanya transfer antar dompet netral, atau sesuaikan kebutuhan
+  }
+
   return (
     <View
       style={{
@@ -106,42 +132,49 @@ const TransactionItem = ({
         backgroundColor: "white",
       }}
     >
+      {/* Bagian Kontainer Ikon */}
       <View
         style={{
           width: 44,
           height: 44,
           borderRadius: 12,
-          backgroundColor: isIn ? "#f0fdf8" : "#fef2f2",
+          backgroundColor: iconBgColor,
           alignItems: "center",
           justifyContent: "center",
           marginRight: 12,
         }}
       >
-        {isIn ? (
-          <MoveUpRight size={18} color="#00bf71" strokeWidth={2.5} />
-        ) : (
+        {item.type == "income" && (
+          <TrendingUp size={18} color="#00bf71" strokeWidth={2.5} />
+        )}
+        {item.type == "expense" && (
           <TrendingDown size={18} color="#f43f5e" strokeWidth={2.5} />
+        )}
+        {item.type == "transfer" && (
+          <MoveRight size={18} color="#eab308" strokeWidth={2.5} /> 
         )}
       </View>
 
+      {/* Bagian Nama & Label */}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1f36" }}>
           {item.name}
         </Text>
         <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-          {isIn ? "Pemasukan" : "Pengeluaran"}
+          {typeLabel}
         </Text>
       </View>
 
+      {/* Bagian Nominal Uang */}
       <View style={{ alignItems: "flex-end" }}>
         <Text
           style={{
             fontSize: 15,
             fontWeight: "700",
-            color: isIn ? "#00bf71" : "#f43f5e",
+            color: amountColor,
           }}
         >
-          {isIn ? "+" : "-"}
+          {amountSign}
           {formatRupiah(item.amount, symbol)}
         </Text>
       </View>

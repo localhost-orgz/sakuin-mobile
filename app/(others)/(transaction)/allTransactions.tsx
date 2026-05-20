@@ -93,6 +93,8 @@ const groupByDate = (txs: any[]): TxSection[] => {
       title: formatSectionDate(date),
       data,
       totalAmount: data.reduce((s, t) => {
+        if (t.type === "transfer") return s;
+
         const amt = Number(t.amount) || 0;
         return s + (t.type === "income" ? amt : -amt);
       }, 0),
@@ -120,6 +122,7 @@ const TransactionRow = ({
   const walletName = item.wallet_id ? item.wallet_id.name : "Wallet";
 
   const isIncome = item.type === "income";
+  const isTransfer = item.type === "transfer";
 
   return (
     <Pressable
@@ -150,10 +153,10 @@ const TransactionRow = ({
         <View className="flex flex-col items-end">
           <Text
             className={`text-md font-bold mb-0.5 ${
-              isIncome ? "text-emerald-500" : "text-red-500"
+              isIncome ? "text-emerald-500" : ( isTransfer ? "text-amber-500" : "text-red-500")
             }`}
           >
-            {isIncome ? `+${formatRupiah(item.amount)}` : `-${formatRupiah(item.amount)}`}
+            {isIncome ? `+${formatRupiah(item.amount)}` : ( isTransfer ? `${formatRupiah(item.amount) }` : `-${formatRupiah(item.amount) }`)}
           </Text>
           <Text className="text-sm text-[#9ca3af]">{walletName}</Text>
         </View>
@@ -288,10 +291,19 @@ export default function AllTransactions() {
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
 
-  const totalFiltered = filtered.reduce(
-    (s, t) => s + (t.type === "income" ? Number(t.amount) : -Number(t.amount)),
-    0
-  );
+  const totalFiltered = filtered.reduce((s, t) => {
+    if (t.type?.toLowerCase() === "transfer") {
+      return s;
+    }
+  
+    const amt = Number(t.amount) || 0;
+  
+    if (t.type?.toLowerCase() === "income") {
+      return s + amt;
+    } else {
+      return s - amt;
+    }
+  }, 0);
 
   if (loading) {
     return (
