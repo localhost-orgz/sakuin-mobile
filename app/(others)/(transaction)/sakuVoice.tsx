@@ -1,14 +1,6 @@
-/**
- * app/(others)/(transaction)/sakuVoice.tsx
- *
- * SakuVoice — Mic recording page with animated soft gradient circle.
- * Fully integrated with @react-native-voice/voice for real speech-to-text and amplitude!
- */
-
-import Voice, { SpeechResultsEvent } from "@react-native-voice/voice";
 import { useRouter } from "expo-router";
 import { ChevronLeft, HelpCircle } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   Animated,
   Dimensions,
@@ -18,6 +10,10 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, {
@@ -27,6 +23,7 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
+import { Audio } from "expo-av";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -219,35 +216,55 @@ export default function SakuVoice() {
   const [isDone, setIsDone] = useState(false);
   const [words, setWords] = useState<string[]>([]);
   const [amplitude, setAmplitude] = useState(0);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const btnScale = useRef(new Animated.Value(1)).current;
+  const recognitionRef = useRef<any>(null);
 
-  // Setup Voice Listeners
+  // Initialize SpeechRecognition for Web
   useEffect(() => {
-    Voice.onSpeechStart = () => setIsRecording(true);
-    Voice.onSpeechEnd = () => setIsRecording(false);
+    if (Platform.OS === "web") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.continuous = false;
+        rec.interimResults = false;
+        rec.lang = "id-ID";
 
-    Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-      if (e.value && e.value.length > 0) {
-        // Mengubah string kalimat menjadi array kata-kata untuk chip komponen
-        const speechString = e.value[0];
-        const speechWords = speechString.split(" ");
-        setWords(speechWords);
+        rec.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          console.log("Web Speech transcript:", transcript);
+          if (transcript) {
+            setWords(transcript.trim().split(" "));
+            setIsDone(true);
+            Alert.alert("Speech to Text Result", `Hasil suara: "${transcript}"`);
+          }
+        };
+
+        rec.onerror = (event: any) => {
+          console.error("Web Speech Recognition error:", event.error);
+        };
+
+        rec.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognitionRef.current = rec;
+      }
+    }
+  }, []);
+
+  // Clean up recording on unmount
+  useEffect(() => {
+    return () => {
+      if (recording) {
+        recording.stopAndUnloadAsync().catch(() => {});
       }
     };
-
-    Voice.onSpeechVolumeChanged = (e: any) => {
-      // Nilai pitch/volume biasanya berkisar 0-10+ tergantung OS, mari kita normalisasi ke 0..1
-      const volume = e.value ?? 0;
-      const normalized = Math.min(Math.max(volume / 12, 0), 1);
-      setAmplitude(normalized);
-    };
-
-    return () => {
-      // Membersihkan listener saat komponen unmount
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
+  }, [recording]);
 
   const pressBtn = () => {
     Animated.sequence([
@@ -265,34 +282,176 @@ export default function SakuVoice() {
     ]).start();
   };
 
+  const transcribeAudio = async (localUri: string): Promise<string | null> => {
+    try {
+      // 1. Fetch file and convert to blob
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+
+      // 2. Convert blob to base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      // 3. Define spaces to try (Gradio /api/predict is keyless & free!)
+      const spaces = [
+        "https://sanchit-gandhi-whisper-large-v3.hf.space/api/predict",
+        "https://openai-whisper.hf.space/api/predict",
+      ];
+
+      for (const url of spaces) {
+        try {
+          console.log("Attempting transcription with:", url);
+          const apiRes = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              data: [
+                {
+                  data: base64Data,
+                  name: "audio.m4a",
+                },
+                "transcribe", // task
+                null, // language auto-detect
+              ],
+            }),
+          });
+
+          if (apiRes.ok) {
+            const json = await apiRes.json();
+            console.log("Transcription response from", url, ":", json);
+            if (json.data && json.data[0]) {
+              return json.data[0];
+            }
+          } else {
+            console.warn(`Space ${url} failed with status:`, apiRes.status);
+          }
+        } catch (spaceErr) {
+          console.error(`Error transcribing with space ${url}:`, spaceErr);
+        }
+      }
+    } catch (error) {
+      console.error("General transcription error:", error);
+    }
+    return null;
+  };
+
   const startRecording = async () => {
     pressBtn();
     setWords([]);
     setAmplitude(0);
     setIsDone(false);
+
+    if (Platform.OS === "web") {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsRecording(true);
+        } catch (err) {
+          console.error("Failed to start web recognition:", err);
+        }
+      } else {
+        Alert.alert("Error", "Speech recognition tidak didukung di browser ini.");
+      }
+      return;
+    }
+
     try {
-      // Menggunakan dialek Bahasa Indonesia 'id-ID'
-      await Voice.start("id-ID");
+      // Request permission
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Izin Mikrofon Diperlukan",
+          "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu."
+        );
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        {
+          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+          keepConnectionAlive: true,
+        } as any,
+        (status) => {
+          if (status.metering !== undefined) {
+            // Normalisasi metering (-160 s/d 0 dB) ke rentang 0..1
+            const db = status.metering;
+            const normalized = Math.min(Math.max((db + 60) / 60, 0), 1);
+            setAmplitude(normalized);
+          }
+        },
+        100
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
     } catch (error) {
       console.error("Gagal memulai perekaman suara: ", error);
+      Alert.alert("Error", "Gagal mengakses mikrofon atau memulai perekaman.");
     }
   };
 
   const stopRecording = async () => {
     pressBtn();
+
+    if (Platform.OS === "web") {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      return;
+    }
+
     try {
-      await Voice.stop();
-      setIsRecording(false);
-      setIsDone(true);
+      if (recording) {
+        setIsTranscribing(true);
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI();
+        console.log("Audio recorded to:", uri);
+        
+        setRecording(null);
+        setIsRecording(false);
+
+        if (uri) {
+          const text = await transcribeAudio(uri);
+          if (text) {
+            setWords(text.trim().split(" "));
+            setIsDone(true);
+            Alert.alert("Speech to Text Result", `Hasil suara: "${text}"`);
+          } else {
+            setIsDone(true);
+            Alert.alert(
+              "Speech to Text",
+              "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah."
+            );
+          }
+        }
+      }
     } catch (error) {
       console.error("Gagal menghentikan perekaman suara: ", error);
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
   const reset = async () => {
     pressBtn();
     try {
-      await Voice.cancel();
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        setRecording(null);
+      }
       setIsRecording(false);
       setIsDone(false);
       setWords([]);
@@ -365,7 +524,21 @@ export default function SakuVoice() {
 
         {/* Status label inside blob */}
         <View style={{ alignItems: "center", gap: 6, zIndex: 5 }}>
-          {!isRecording && !isDone && (
+          {isTranscribing && (
+            <>
+              <ActivityIndicator size="large" color={GREEN} style={{ marginBottom: 8 }} />
+              <Text
+                style={[
+                  styles.statusLabel,
+                  { color: GREEN_DARK, fontWeight: "700" },
+                ]}
+              >
+                Memproses suara...
+              </Text>
+            </>
+          )}
+
+          {!isRecording && !isDone && !isTranscribing && (
             <>
               <View
                 style={[
@@ -379,7 +552,7 @@ export default function SakuVoice() {
             </>
           )}
 
-          {isRecording && (
+          {isRecording && !isTranscribing && (
             <>
               <View
                 style={[
@@ -400,7 +573,7 @@ export default function SakuVoice() {
             </>
           )}
 
-          {isDone && !isRecording && (
+          {isDone && !isRecording && !isTranscribing && (
             <Text style={[styles.statusLabel, { color: "#374151" }]}>
               Selesai 🎉
             </Text>
@@ -415,34 +588,94 @@ export default function SakuVoice() {
           paddingHorizontal: 24,
           paddingTop: 4,
           alignItems: "center",
+          width: "100%",
         }}
       >
         {words.length > 0 ? (
-          <View style={styles.chipsRow}>
-            {words.map((w, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.chip,
-                  i === words.length - 1 && isRecording && styles.chipActive,
-                ]}
-              >
-                <Text
+          <View style={{ width: "100%", alignItems: "center" }}>
+            <View style={styles.chipsRow}>
+              {words.map((w, i) => (
+                <View
+                  key={i}
                   style={[
-                    styles.chipText,
-                    i === words.length - 1 &&
-                      isRecording && { color: GREEN_DARK },
+                    styles.chip,
+                    i === words.length - 1 && isRecording && styles.chipActive,
                   ]}
                 >
-                  {w}
-                </Text>
-              </View>
-            ))}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      i === words.length - 1 &&
+                        isRecording && { color: GREEN_DARK },
+                    ]}
+                  >
+                    {w}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* TextInput to edit/review manual transcription */}
+            {!isRecording && !isTranscribing && (
+              <TextInput
+                value={words.join(" ")}
+                onChangeText={(txt) => setWords(txt.split(" "))}
+                placeholder="Edit hasil transkripsi..."
+                placeholderTextColor="#9ca3af"
+                style={{
+                  width: "90%",
+                  backgroundColor: "white",
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: "#e5e7eb",
+                  fontSize: 15,
+                  color: "#1f2937",
+                  textAlign: "center",
+                  marginTop: 20,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            )}
           </View>
         ) : (
-          <Text style={styles.hint}>
-            {isRecording ? "" : 'Coba ucapkan: "Makan siang 50 ribu"'}
-          </Text>
+          <View style={{ width: "100%", alignItems: "center" }}>
+            <Text style={styles.hint}>
+              {isRecording ? "" : 'Coba ucapkan: "Makan siang 50 ribu"'}
+            </Text>
+            
+            {/* Fallback input field if they want to type manually from start */}
+            {!isRecording && !isTranscribing && (
+              <TextInput
+                onChangeText={(txt) => setWords(txt.split(" "))}
+                placeholder="Atau ketik manual di sini..."
+                placeholderTextColor="#9ca3af"
+                style={{
+                  width: "90%",
+                  backgroundColor: "white",
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: "#e5e7eb",
+                  fontSize: 15,
+                  color: "#1f2937",
+                  textAlign: "center",
+                  marginTop: 20,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            )}
+          </View>
         )}
       </View>
 
