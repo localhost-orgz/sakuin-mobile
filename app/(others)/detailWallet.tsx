@@ -1,4 +1,8 @@
-import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
+import useWalletTheme, {
+  WalletThemeId,
+  getWalletTheme,
+  getWalletThemeIds,
+} from "@/hooks/useWalletTheme";
 import { apiRequest } from "@/utils/api"; //
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import {
@@ -11,6 +15,10 @@ import {
   TrendingDown,
   TrendingUp,
   WalletMinimal,
+  Edit2,
+  Trash2,
+  X,
+  Check,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -23,6 +31,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  ScrollView,
+  Alert,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -132,6 +146,68 @@ const TransactionItem = ({
   );
 };
 
+const ThemeCircle = ({
+  theme,
+  selected,
+  onPress,
+}: {
+  theme: any;
+  selected: boolean;
+  onPress: () => void;
+}) => {
+  return (
+    <View style={{ alignItems: "center", gap: 6 }}>
+      <Pressable
+        onPress={onPress}
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          justifyContent: "center",
+          alignItems: "center",
+          position: "relative",
+        }}
+      >
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: theme.accentColor,
+          }}
+        >
+          {selected && <Check size={16} color="white" strokeWidth={3} />}
+        </View>
+        {selected && (
+          <View
+            style={{
+              position: "absolute",
+              top: 1,
+              left: 1,
+              right: 1,
+              bottom: 1,
+              borderRadius: 23,
+              borderWidth: 2.5,
+              borderColor: theme.accentColor,
+            }}
+          />
+        )}
+      </Pressable>
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: selected ? "700" : "500",
+          color: selected ? theme.accentColor : "#9ca3af",
+        }}
+      >
+        {theme.label}
+      </Text>
+    </View>
+  );
+};
+
 export default function DetailWallet() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -142,12 +218,19 @@ export default function DetailWallet() {
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetView, setSheetView] = useState<"options" | "edit">("options");
+  const [editName, setEditName] = useState("");
+  const [editThemeId, setEditThemeId] = useState<WalletThemeId>("ocean");
+
   // Fetch data dari API
   const fetchWalletDetail = useCallback(async () => {
     try {
       const response = await apiRequest(`/wallets/${walletId}`);
       if (response.status === "success") {
         setWallet(response.data);
+        setEditName(response.data.name);
+        setEditThemeId(response.data.color as WalletThemeId);
       }
     } catch (error) {
       console.error("Failed to fetch wallet:", error);
@@ -156,6 +239,82 @@ export default function DetailWallet() {
       setRefreshing(false);
     }
   }, [walletId]);
+
+  const openSheet = () => {
+    if (wallet) {
+      setEditName(wallet.name);
+      setEditThemeId(wallet.color as WalletThemeId);
+    }
+    setSheetView("options");
+    setSheetVisible(true);
+  };
+
+  const handleEditWallet = async () => {
+    if (!editName.trim()) {
+      Alert.alert("Input Salah", "Nama dompet tidak boleh kosong.");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await apiRequest(`/wallets/${walletId}`, {
+        method: "PUT",
+        body: {
+          name: editName.trim(),
+          color: editThemeId,
+          balance: wallet?.balance || 0,
+          currency_id: "6a02f8a7de59afc0c23a95c9",
+        },
+      });
+
+      if (response && response.status === "success") {
+        setSheetVisible(false);
+        fetchWalletDetail();
+        Alert.alert("Sukses", "Informasi dompet berhasil diperbarui.");
+      } else {
+        Alert.alert("Error", "Gagal memperbarui dompet.");
+      }
+    } catch (error) {
+      console.error("Error updating wallet:", error);
+      Alert.alert("Error", "Terjadi kesalahan saat menghubungi server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteWallet = async () => {
+    Alert.alert(
+      "Hapus Dompet",
+      `Apakah Anda yakin ingin menghapus dompet "${wallet?.name}"? Semua riwayat transaksi di dompet ini juga akan terhapus.`,
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              setSheetVisible(false);
+              const response = await apiRequest(`/wallets/${walletId}`, {
+                method: "DELETE",
+              });
+              if (response) {
+                Alert.alert("Sukses", "Dompet berhasil dihapus.");
+                router.replace("/(main)/portfolio");
+              } else {
+                Alert.alert("Error", "Gagal menghapus dompet.");
+              }
+            } catch (error) {
+              console.error("Error deleting wallet:", error);
+              Alert.alert("Error", "Terjadi kesalahan saat menghapus dompet.");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -460,7 +619,7 @@ export default function DetailWallet() {
             <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>
               Wallet Detail
             </Text>
-            <Pressable>
+            <Pressable onPress={openSheet}>
               <Ellipsis color={"white"} />
             </Pressable>
           </View>
@@ -517,6 +676,306 @@ export default function DetailWallet() {
             <TransactionItem item={item} symbol={wallet.currency_id.symbol} />
           )}
         />
+
+        {/* Options & Edit Bottom Sheet */}
+        <Modal
+          visible={sheetVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSheetVisible(false)}
+          statusBarTranslucent
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+          >
+            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,23,42,0.4)" }}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => setSheetVisible(false)} />
+            
+            <View
+              style={{
+                backgroundColor: "white",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: insets.bottom + 20,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: -10 },
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+                elevation: 25,
+              }}
+            >
+              {/* Drag Handle */}
+              <View
+                style={{
+                  width: 38,
+                  height: 4,
+                  backgroundColor: "#e2e8f0",
+                  borderRadius: 2,
+                  alignSelf: "center",
+                  marginBottom: 20,
+                }}
+              />
+
+              {sheetView === "options" ? (
+                // ─── OPTIONS VIEW ───────────────────────────────────────────────
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "800",
+                      color: "#0f172a",
+                      letterSpacing: -0.4,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Pengaturan Dompet
+                  </Text>
+                  <Text style={{ fontSize: 13, color: "#94a3b8", marginBottom: 20 }}>
+                    Kelola informasi atau hapus dompet Anda
+                  </Text>
+
+                  {/* Option: Edit Info */}
+                  <TouchableOpacity
+                    onPress={() => setSheetView("edit")}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 14,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "#f1f5f9",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        backgroundColor: "#eff6ff",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 14,
+                      }}
+                    >
+                      <Edit2 size={20} color="#2563eb" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: "#1e293b" }}>
+                        Edit Info Dompet
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        Ubah nama dan tema warna dompet ini
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Option: Delete Wallet */}
+                  <TouchableOpacity
+                    onPress={handleDeleteWallet}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 14,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        backgroundColor: "#fef2f2",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 14,
+                      }}
+                    >
+                      <Trash2 size={20} color="#ef4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: "#ef4444" }}>
+                        Hapus Dompet
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        Hapus dompet ini secara permanen
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Button: Cancel */}
+                  <TouchableOpacity
+                    onPress={() => setSheetVisible(false)}
+                    style={{
+                      width: "100%",
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: "#f1f5f9",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#475569" }}>
+                      Batal
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // ─── EDIT VIEW ──────────────────────────────────────────────────
+                <View>
+                  {/* Header */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 20,
+                    }}
+                  >
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "800",
+                          color: "#0f172a",
+                          letterSpacing: -0.4,
+                        }}
+                      >
+                        Edit Info Dompet
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        Sesuaikan tampilan dompet Anda
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setSheetView("options")}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: "#f1f5f9",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <X size={16} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Input: Wallet Name */}
+                  <View style={{ marginBottom: 20 }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: "#475569",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Nama Dompet
+                    </Text>
+                    <TextInput
+                      value={editName}
+                      onChangeText={setEditName}
+                      placeholder="Nama Dompet"
+                      placeholderTextColor="#94a3b8"
+                      style={{
+                        width: "100%",
+                        height: 48,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: "#e2e8f0",
+                        paddingHorizontal: 16,
+                        fontSize: 15,
+                        color: "#0f172a",
+                        fontWeight: "600",
+                      }}
+                    />
+                  </View>
+
+                  {/* Theme List */}
+                  <View style={{ marginBottom: 26 }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: "#475569",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Pilih Tema Warna
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{
+                        paddingVertical: 4,
+                        paddingHorizontal: 2,
+                        gap: 12,
+                      }}
+                    >
+                      {getWalletThemeIds().map((tid) => {
+                        const tObj = getWalletTheme(tid);
+                        const selected = editThemeId === tid;
+                        return (
+                          <ThemeCircle
+                            key={tid}
+                            theme={tObj}
+                            selected={selected}
+                            onPress={() => setEditThemeId(tid)}
+                          />
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <TouchableOpacity
+                      onPress={() => setSheetView("options")}
+                      style={{
+                        flex: 1,
+                        height: 48,
+                        borderRadius: 12,
+                        backgroundColor: "#f1f5f9",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: "#475569" }}>
+                        Kembali
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleEditWallet}
+                      disabled={!editName.trim()}
+                      style={{
+                        flex: 2,
+                        height: 48,
+                        borderRadius: 12,
+                        backgroundColor: editName.trim() ? theme.accentColor : "#cbd5e1",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        shadowColor: theme.accentColor,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: editName.trim() ? 0.2 : 0,
+                        shadowRadius: 6,
+                        elevation: editName.trim() ? 4 : 0,
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: "white" }}>
+                        Simpan ✓
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </>
   );

@@ -1,19 +1,20 @@
+import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import { ChevronLeft, HelpCircle } from "lucide-react-native";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Easing,
+  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
   Text,
-  View,
-  Alert,
-  Platform,
-  ActivityIndicator,
   TextInput,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, {
@@ -23,7 +24,6 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
-import { Audio } from "expo-av";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -240,7 +240,10 @@ export default function SakuVoice() {
           if (transcript) {
             setWords(transcript.trim().split(" "));
             setIsDone(true);
-            Alert.alert("Speech to Text Result", `Hasil suara: "${transcript}"`);
+            Alert.alert(
+              "Speech to Text Result",
+              `Hasil suara: "${transcript}"`,
+            );
           }
         };
 
@@ -358,7 +361,10 @@ export default function SakuVoice() {
           console.error("Failed to start web recognition:", err);
         }
       } else {
-        Alert.alert("Error", "Speech recognition tidak didukung di browser ini.");
+        Alert.alert(
+          "Error",
+          "Speech recognition tidak didukung di browser ini.",
+        );
       }
       return;
     }
@@ -369,7 +375,7 @@ export default function SakuVoice() {
       if (permission.status !== "granted") {
         Alert.alert(
           "Izin Mikrofon Diperlukan",
-          "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu."
+          "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu.",
         );
         return;
       }
@@ -392,7 +398,7 @@ export default function SakuVoice() {
             setAmplitude(normalized);
           }
         },
-        100
+        100,
       );
 
       setRecording(newRecording);
@@ -419,7 +425,7 @@ export default function SakuVoice() {
         await recording.stopAndUnloadAsync();
         const uri = recording.getURI();
         console.log("Audio recorded to:", uri);
-        
+
         setRecording(null);
         setIsRecording(false);
 
@@ -433,7 +439,7 @@ export default function SakuVoice() {
             setIsDone(true);
             Alert.alert(
               "Speech to Text",
-              "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah."
+              "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah.",
             );
           }
         }
@@ -526,7 +532,11 @@ export default function SakuVoice() {
         <View style={{ alignItems: "center", gap: 6, zIndex: 5 }}>
           {isTranscribing && (
             <>
-              <ActivityIndicator size="large" color={GREEN} style={{ marginBottom: 8 }} />
+              <ActivityIndicator
+                size="large"
+                color={GREEN}
+                style={{ marginBottom: 8 }}
+              />
               <Text
                 style={[
                   styles.statusLabel,
@@ -648,7 +658,7 @@ export default function SakuVoice() {
             <Text style={styles.hint}>
               {isRecording ? "" : 'Coba ucapkan: "Makan siang 50 ribu"'}
             </Text>
-            
+
             {/* Fallback input field if they want to type manually from start */}
             {!isRecording && !isTranscribing && (
               <TextInput
