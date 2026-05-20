@@ -246,7 +246,7 @@ const AddWalletModal = ({
 
     const onShow = (e: KeyboardEvent) => {
       Animated.timing(keyboardOffset, {
-        toValue: e.endCoordinates.height,
+        toValue: Platform.OS === "ios" ? e.endCoordinates.height : 0,
         duration: Platform.OS === "ios" ? e.duration || 250 : 200,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
@@ -386,8 +386,8 @@ const AddWalletModal = ({
           right: 0,
           transform: [
             { translateY: slideAnim },
-            // Negative so the sheet moves UP when keyboard appears
-            { translateY: Animated.multiply(keyboardOffset, -1) },
+            // Negative so the sheet moves UP when keyboard appears (iOS only)
+            { translateY: Platform.OS === "ios" ? Animated.multiply(keyboardOffset, -1) : 0 },
           ],
         }}
       >

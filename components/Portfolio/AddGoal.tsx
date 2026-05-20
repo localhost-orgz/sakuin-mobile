@@ -170,7 +170,7 @@ const AddGoalModal = ({
 
     const onShow = (e: KeyboardEvent) => {
       Animated.timing(keyboardOffset, {
-        toValue: e.endCoordinates.height,
+        toValue: Platform.OS === "ios" ? e.endCoordinates.height : 0,
         duration: Platform.OS === "ios" ? e.duration || 250 : 200,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
@@ -374,7 +374,7 @@ const AddGoalModal = ({
           right: 0,
           transform: [
             { translateY: slideAnim },
-            { translateY: Animated.multiply(keyboardOffset, -1) },
+            { translateY: Platform.OS === "ios" ? Animated.multiply(keyboardOffset, -1) : 0 },
           ],
         }}
       >

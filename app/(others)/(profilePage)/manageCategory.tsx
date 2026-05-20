@@ -374,7 +374,7 @@ const CategorySheet = ({
           right: 0,
           transform: [
             { translateY: slideAnim },
-            { translateY: Animated.multiply(keyboardOffset, -1) },
+            { translateY: Platform.OS === "ios" ? Animated.multiply(keyboardOffset, -1) : 0 },
           ],
         }}
       >
