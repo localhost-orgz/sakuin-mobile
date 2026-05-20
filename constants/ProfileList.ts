@@ -27,8 +27,11 @@ export const GROUP_2: MenuItem[] = [
     value: "IDR",
     link: "",
   },
-  { label: "Transaction History", type: "arrow", link: "" },
-
+  { 
+    label: "Transaction History", 
+    type: "arrow", 
+    link: "/(others)/(transaction)/allTransactions" 
+  },
   {
     label: "Privacy",
     type: "arrow",

@@ -117,8 +117,7 @@ const TransactionRow = ({
     (categorySlug as WalletThemeId) ?? "ocean"
   );
 
-  const wallet = wallets.find((w) => (w._id || w.id) === item.wallet_id);
-  const walletName = wallet ? wallet.name : "Wallet";
+  const walletName = item.wallet_id ? item.wallet_id.name : "Wallet";
 
   const isIncome = item.type === "income";
 
