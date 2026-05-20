@@ -1,4 +1,5 @@
 import { Link, useRouter } from "expo-router";
+import { setSplitSession } from "@/utils/splitSession";
 import {
   AlignLeft,
   Calendar,
@@ -339,7 +340,20 @@ export default function SakuEdit() {
             <View className="p-5 bg-[#f7f8fa] border-t border-gray-200">
               <Link href={"/(others)/(transaction)/splitPage"} asChild>
                 <Pressable
-                  onPress={() => console.log("Final Saved Data:", formData)}
+                  onPress={() => {
+                    const totalAmount = formData.items.reduce((sum, item) => sum + item.total, 0);
+                    setSplitSession({
+                      amount: totalAmount,
+                      items: formData.items.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        total: item.total
+                      })),
+                      participants: [{ id: "me", name: "Me" }],
+                      assignedProducts: formData.items.map(() => ["me"]),
+                    });
+                  }}
                   className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center flex-row"
                 >
                   <Text className="text-white font-bold text-lg ml-2">

@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MOCK_STRUK_DATA } from "@/constants/sakusnapResponse";
+import { setSplitSession } from "@/utils/splitSession";
 
 export default function SakuResult() {
   const router = useRouter();
@@ -150,7 +151,14 @@ export default function SakuResult() {
 
             <Link href={"/(others)/(transaction)/splitPage"} asChild>
               <TouchableOpacity
-                onPress={() => console.log("Next Pressed")}
+                onPress={() => {
+                  setSplitSession({
+                    amount: result.amount,
+                    items: result.items,
+                    participants: [{ id: "me", name: "Me" }],
+                    assignedProducts: result.items.map(() => ["me"]),
+                  });
+                }}
                 className="flex-[2] flex-row bg-[#00bf71] rounded-xl items-center justify-center"
               >
                 <Text className="text-white font-bold text-lg mr-2">

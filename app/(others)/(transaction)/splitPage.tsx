@@ -1,4 +1,4 @@
-import { setSplitSession } from "@/utils/splitSession";
+import { getSplitSession, setSplitSession } from "@/utils/splitSession";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, User } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
@@ -37,13 +37,50 @@ export default function SakuSplit() {
   const router = useRouter();
 
   // State 👤
-  const [participants, setParticipants] = useState([{ id: "me", name: "Me" }]);
+  const initialSession = getSplitSession();
+
+  const strukData = useMemo(() => {
+    return initialSession ? {
+      amount: initialSession.amount,
+      items: initialSession.items
+    } : {
+      amount: 132000,
+      items: [
+        { name: "Bangladesh Biasa", quantity: 3, price: 15000, total: 45000 },
+        { name: "Puding Isi 1", quantity: 2, price: 8000, total: 16000 },
+        { name: "Goreng goreng", quantity: 2, price: 15000, total: 30000 },
+        { name: "Mineral d", quantity: 2, price: 5000, total: 10000 },
+        { name: "Mandi (Manis Dingin)", quantity: 2, price: 8000, total: 16000 },
+        { name: "Goreng goreng", quantity: 1, price: 15000, total: 15000 },
+      ]
+    };
+  }, [initialSession]);
+
+  const [participants, setParticipants] = useState(() => {
+    return initialSession?.participants && initialSession.participants.length > 0
+      ? initialSession.participants
+      : [{ id: "me", name: "Me" }];
+  });
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
 
-  const [assignedProducts, setAssignedProducts] = useState(
-    MOCK_STRUK_DATA.data.items.map(() => ["me"]),
-  );
+  const [assignedProducts, setAssignedProducts] = useState(() => {
+    if (initialSession?.assignedProducts && initialSession.assignedProducts.length === initialSession.items.length) {
+      return initialSession.assignedProducts;
+    }
+    return strukData.items.map(() => ["me"]);
+  });
+
+  React.useEffect(() => {
+    if (initialSession) {
+      setParticipants(initialSession.participants || [{ id: "me", name: "Me" }]);
+      if (initialSession.assignedProducts && initialSession.assignedProducts.length === initialSession.items.length) {
+        setAssignedProducts(initialSession.assignedProducts);
+      } else {
+        setAssignedProducts(initialSession.items.map(() => ["me"]));
+      }
+    }
+  }, [initialSession]);
 
   const addParticipant = () => {
     if (newPersonName.trim()) {
@@ -80,18 +117,20 @@ export default function SakuSplit() {
 
   const myTotalExpense = useMemo(() => {
     return assignedProducts.reduce((acc, assignedIds, idx) => {
-      const productTotal = MOCK_STRUK_DATA.data.items[idx].total;
+      const item = strukData.items[idx];
+      if (!item) return acc;
+      const productTotal = item.total;
 
       if (!assignedIds.includes("me") || assignedIds.length === 0) return acc;
 
       return acc + productTotal / assignedIds.length;
     }, 0);
-  }, [assignedProducts]);
+  }, [assignedProducts, strukData]);
 
   const goToSummary = () => {
     setSplitSession({
-      amount: MOCK_STRUK_DATA.data.amount,
-      items: MOCK_STRUK_DATA.data.items,
+      amount: strukData.amount,
+      items: strukData.items,
       participants,
       assignedProducts,
     });
@@ -176,10 +215,10 @@ export default function SakuSplit() {
 
               {/* Full Width List */}
               <View className="bg-white border-y border-gray-100">
-                {MOCK_STRUK_DATA.data.items.map((item, idx) => {
-                  const assignedCount = assignedProducts[idx].length;
+                {strukData.items.map((item, idx) => {
+                  const assignedCount = assignedProducts[idx]?.length || 0;
 
-                  const myShare = assignedProducts[idx].includes("me")
+                  const myShare = assignedProducts[idx]?.includes("me")
                     ? item.total / (assignedCount || 1)
                     : 0;
 
@@ -187,7 +226,7 @@ export default function SakuSplit() {
                     <View
                       key={idx}
                       className={`px-5 py-4 ${
-                        idx !== MOCK_STRUK_DATA.data.items.length - 1
+                        idx !== strukData.items.length - 1
                           ? "border-b border-gray-100"
                           : ""
                       }`}

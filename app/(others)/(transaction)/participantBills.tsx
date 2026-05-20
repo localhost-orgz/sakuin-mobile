@@ -5,17 +5,18 @@ import {
 } from "@/utils/splitSession";
 import { useRouter } from "expo-router";
 import { CheckCircle2, ChevronLeft, Share2, User } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import {
   Alert,
   Linking,
   ScrollView,
-  Share,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const formatRp = (amount: number) =>
@@ -109,43 +110,29 @@ export default function ParticipantBills() {
   const grandTotal = session?.amount ?? 0;
   const splitTotal = bills.reduce((sum, b) => sum + b.total, 0);
 
-  const buildShareText = (): string => {
-    const lines: string[] = [];
-    lines.push("🧾 *Rincian Tagihan Bersama*");
-    lines.push(`Total Struk: *${formatRp(grandTotal)}*`);
-    lines.push(`${session?.participants.length ?? 0} Partisipan\n`);
+  const receiptRef = useRef<View>(null);
 
-    bills.forEach((bill) => {
-      lines.push(`👤 *${bill.participant.name}*`);
-      if (bill.items.length === 0) {
-        lines.push("  • Tidak ada item ditugaskan");
-      } else {
-        bill.items.forEach((item) => {
-          const shared =
-            item.sharedWith > 1 ? ` (dibagi ${item.sharedWith})` : "";
-          lines.push(`  • ${item.name}${shared}: *${formatRp(item.share)}*`);
-        });
-      }
-      lines.push(`  💰 Subtotal: *${formatRp(bill.total)}*\n`);
-    });
-
-    lines.push("_Dikirim via Sakuin App_ 🌿");
-    return lines.join("\n");
-  };
-
-  const handleShareWhatsApp = async () => {
-    const text = buildShareText();
-    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
-
+  const handleShareImage = async () => {
     try {
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      if (canOpen) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        await Share.share({ message: text });
+      if (!receiptRef.current) {
+        Alert.alert("Error", "Tampilan struk belum siap.");
+        return;
       }
-    } catch {
-      Alert.alert("Gagal", "Tidak dapat membuka opsi berbagi.");
+      const uri = await captureRef(receiptRef, {
+        format: "png",
+        quality: 1.0,
+      });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Bagikan Rincian Tagihan",
+        });
+      } else {
+        Alert.alert("Error", "Fitur berbagi tidak tersedia di platform ini.");
+      }
+    } catch (err) {
+      console.error("Capture and share error:", err);
+      Alert.alert("Gagal", "Gagal mengambil gambar rincian tagihan.");
     }
   };
 
@@ -185,8 +172,8 @@ export default function ParticipantBills() {
             Tagihan Per Orang
           </Text>
           <TouchableOpacity
-            onPress={handleShareWhatsApp}
-            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+            onPress={handleShareImage}
+            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3"
             activeOpacity={0.75}
           >
             <Share2 size={18} color="white" />
@@ -232,7 +219,7 @@ export default function ParticipantBills() {
           </View>
           <View className="flex-row gap-3">
             <TouchableOpacity
-              onPress={handleShareWhatsApp}
+              onPress={handleShareImage}
               activeOpacity={0.8}
               style={{ borderWidth: 2, borderColor: "#00bf71" }}
               className="flex-1 h-14 rounded-2xl items-center justify-center flex-row"
@@ -252,6 +239,116 @@ export default function ParticipantBills() {
           </View>
         </View>
       </SafeAreaView>
+
+      {/* ── Hidden Receipt Card for Image Capture ── */}
+      <View
+        ref={receiptRef}
+        collapsable={false}
+        style={{
+          position: "absolute",
+          left: -9999,
+          width: 375,
+          backgroundColor: "#FFFFFF",
+          padding: 24,
+        }}
+      >
+        {/* Receipt Header */}
+        <View style={{ alignItems: "center", marginBottom: 20 }}>
+          <Text style={{ fontSize: 24, fontWeight: "900", color: "#00bf71", letterSpacing: 1.5 }}>
+            SAKUIN
+          </Text>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: "#9ca3af", marginTop: 4, letterSpacing: 2 }}>
+            SPLIT BILL RECEIPT
+          </Text>
+        </View>
+
+        {/* Info Grid */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+          <Text style={{ fontSize: 12, color: "#6b7280" }}>Tanggal</Text>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#1f2937" }}>
+            {new Date().toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
+          <Text style={{ fontSize: 12, color: "#6b7280" }}>Status</Text>
+          <View style={{ backgroundColor: "#00bf71", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+            <Text style={{ fontSize: 10, fontWeight: "700", color: "#FFFFFF" }}>SUCCESS</Text>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={{ borderStyle: "dashed", borderWidth: 1, borderColor: "#e5e7eb", marginVertical: 12, height: 1, width: "100%" }} />
+
+        {/* Grand Total */}
+        <View style={{ alignItems: "center", marginVertical: 16 }}>
+          <Text style={{ fontSize: 12, color: "#9ca3af", fontWeight: "600", textTransform: "uppercase" }}>
+            Total Tagihan Terbagi
+          </Text>
+          <Text style={{ fontSize: 32, fontWeight: "900", color: "#1f2937", marginTop: 4 }}>
+            {formatRp(splitTotal)}
+          </Text>
+          {grandTotal !== splitTotal && (
+            <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+              Total Struk: {formatRp(grandTotal)}
+            </Text>
+          )}
+        </View>
+
+        {/* Divider */}
+        <View style={{ borderStyle: "dashed", borderWidth: 1, borderColor: "#e5e7eb", marginVertical: 12, height: 1, width: "100%" }} />
+
+        {/* Breakdown Title */}
+        <Text style={{ fontSize: 13, fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", marginBottom: 16 }}>
+          Rincian Per Partisipan
+        </Text>
+
+        {/* Bills Breakdown */}
+        {bills.map((bill, index) => (
+          <View key={bill.participant.id} style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: "800", color: "#1f2937" }}>
+                👤 {bill.participant.name}
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: "800", color: "#00bf71" }}>
+                {formatRp(bill.total)}
+              </Text>
+            </View>
+
+            {bill.items.map((item, itemIdx) => (
+              <View
+                key={`${bill.participant.id}-${item.name}-${itemIdx}`}
+                style={{ flexDirection: "row", justifyContent: "space-between", paddingLeft: 16, marginBottom: 4 }}
+              >
+                <Text style={{ fontSize: 12, color: "#6b7280", flex: 1 }}>
+                  • {item.name}{item.sharedWith > 1 ? ` (1/${item.sharedWith})` : ""}
+                </Text>
+                <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                  {formatRp(item.share)}
+                </Text>
+              </View>
+            ))}
+
+            {index !== bills.length - 1 && (
+              <View style={{ borderBottomWidth: 1, borderBottomColor: "#f3f4f6", marginTop: 12, width: "100%" }} />
+            )}
+          </View>
+        ))}
+
+        {/* Divider */}
+        <View style={{ borderStyle: "dashed", borderWidth: 1, borderColor: "#e5e7eb", marginVertical: 16, height: 1, width: "100%" }} />
+
+        {/* Footer */}
+        <View style={{ alignItems: "center", marginTop: 8 }}>
+          <Text style={{ fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>
+            Thank you for using Sakuin 🌿
+          </Text>
+        </View>
+      </View>
     </>
   );
 }
