@@ -9,6 +9,7 @@ import { RecentTransactionItemSkeleton } from "@/components/Home/RecentTransacti
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { apiRequest } from "@/utils/api";
+import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, Filter, Search, X } from "lucide-react-native";
@@ -212,17 +213,25 @@ export default function AllTransactions() {
   const fetchTransactionsData = async () => {
     try {
       setLoading(true);
-      const [txRes, walletsRes, categoriesRes] = await Promise.all([
-        apiRequest("/transaction", { method: "GET" }),
-        apiRequest("/wallets", { method: "GET" }),
-        apiRequest("/categories", { method: "GET" }),
-      ]);
+      const token = await SecureStore.getItemAsync("user_token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
+      // Fetch transactions first to verify authentication
+      const txRes = await apiRequest("/transaction", { method: "GET" });
       if (txRes?.status === "success" && txRes.data) {
         setTransactions(txRes.data);
       } else if (Array.isArray(txRes)) {
         setTransactions(txRes);
       }
+
+      // Fetch other dependencies in parallel only if authorized
+      const [walletsRes, categoriesRes] = await Promise.all([
+        apiRequest("/wallets", { method: "GET" }),
+        apiRequest("/categories", { method: "GET" }),
+      ]);
 
       if (walletsRes?.status === "success" && walletsRes.data) {
         setWallets(walletsRes.data);

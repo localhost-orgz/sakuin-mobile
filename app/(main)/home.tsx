@@ -20,6 +20,7 @@ import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { useFocusEffect } from "expo-router";
 import { apiRequest } from "@/utils/api";
+import * as SecureStore from "expo-secure-store";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -82,13 +83,26 @@ export default function Home() {
   const initHomeData = async () => {
     try {
       setLoading(true);
-      // Menjalankan fetch paralel untuk user, wallets, dan transactions bersamaan
-      await Promise.all([
-        fetchUser(),
-        fetchWallets(),
-        fetchTransactions(),
-        fetchCategories(),
-      ]);
+      const token = await SecureStore.getItemAsync("user_token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user profile first (acts as our authorization check)
+      const res = await apiRequest("/auth/profile", {
+        method: "GET",
+      });
+
+      if (res.status === "success" && res.data) {
+        setUser(res.data);
+        // Only if profile succeeded, load other data in parallel
+        await Promise.all([
+          fetchWallets(),
+          fetchTransactions(),
+          fetchCategories(),
+        ]);
+      }
     } catch (err) {
       console.error("Error loading home data:", err);
     } finally {
@@ -104,14 +118,30 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Ditambahkan fetchTransactions di dalam Promise.all onRefresh
-    await Promise.all([
-      fetchUser(),
-      fetchWallets(),
-      fetchTransactions(),
-      fetchCategories(),
-    ]);
-    setTimeout(() => setRefreshing(false), 1500);
+    try {
+      const token = await SecureStore.getItemAsync("user_token");
+      if (!token) {
+        setRefreshing(false);
+        return;
+      }
+
+      const res = await apiRequest("/auth/profile", {
+        method: "GET",
+      });
+
+      if (res.status === "success" && res.data) {
+        setUser(res.data);
+        await Promise.all([
+          fetchWallets(),
+          fetchTransactions(),
+          fetchCategories(),
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to refresh home data:", err);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const [seeding, setSeeding] = useState(false);

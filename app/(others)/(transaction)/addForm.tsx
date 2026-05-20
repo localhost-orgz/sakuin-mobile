@@ -19,6 +19,8 @@ import {
   View,
   ActivityIndicator,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -215,10 +217,11 @@ export default function AddTransaction() {
   return (
     <>
       <StatusBar barStyle={"dark-content"} />
-      <View
-        style={{ paddingTop: insets.top }}
-        className="flex-1 bg-white px-5 flex-col justify-between"
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View
+          style={{ paddingTop: insets.top }}
+          className="flex-1 bg-white px-5 flex-col justify-between"
+        >
         <View>
           {/* Header */}
           <View className="flex-row items-center justify-between py-4">
@@ -412,6 +415,7 @@ export default function AddTransaction() {
           )}
         </Pressable>
       </View>
+      </TouchableWithoutFeedback>
 
       <CurrencyBottomSheet
         ref={currencyBottomSheet}

@@ -24,6 +24,8 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -367,10 +369,11 @@ export default function EditTransaction() {
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <View
-        style={{ paddingTop: insets.top }}
-        className="flex-1 bg-white px-5 flex-col justify-between"
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View
+          style={{ paddingTop: insets.top }}
+          className="flex-1 bg-white px-5 flex-col justify-between"
+        >
         <View>
           {/* ── Header ──────────────────────────────────────────────────── */}
           <View className="flex-row items-center justify-between py-4">
@@ -598,6 +601,7 @@ export default function EditTransaction() {
           )}
         </Pressable>
       </View>
+      </TouchableWithoutFeedback>
 
       {/* ── Bottom Sheets ─────────────────────────────────────────────────── */}
       <CurrencyBottomSheet
