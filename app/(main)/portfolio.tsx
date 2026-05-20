@@ -6,7 +6,7 @@ import { CURRENT_GOALS } from "@/constants/goalsList";
 import { apiRequest } from "@/utils/api";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { RefreshControl } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -41,14 +41,6 @@ export default function PortfolioScreen() {
     setRefreshing(false);
   }, [fetchWallets]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#00bf71" />
-      </View>
-    );
-  }
-
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: "#f5f6fa" }}
@@ -61,6 +53,7 @@ export default function PortfolioScreen() {
         isBalanceShow={isBalanceShow}
         onBalanceShow={setIsBalanceShow}
         wallets={wallets}
+        loading={loading}
       />
 
       <View>
@@ -69,11 +62,13 @@ export default function PortfolioScreen() {
           onBalanceShow={setIsBalanceShow}
           wallets={wallets}
           onRefreshNeeded={fetchWallets}
+          loading={loading}
         />
         <GoalCardsSection
           isBalanceShow={isBalanceShow}
           onBalanceShow={setIsBalanceShow}
           goals={CURRENT_GOALS}
+          loading={loading}
         />
       </View>
     </ScrollView>

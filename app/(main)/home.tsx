@@ -90,7 +90,91 @@ export default function Home() {
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
+  const [seeding, setSeeding] = useState(false);
 
+  const seedTransactions = async () => {
+    try {
+      setSeeding(true);
+      // Fetch categories & wallets to map
+      const [catsRes, walletsRes] = await Promise.all([
+        apiRequest("/categories", { method: "GET" }),
+        apiRequest("/wallets", { method: "GET" })
+      ]);
+
+      if (catsRes?.status !== "success" || !catsRes.data || catsRes.data.length === 0) {
+        alert("No categories found to seed transactions!");
+        return;
+      }
+      if (walletsRes?.status !== "success" || !walletsRes.data || walletsRes.data.length === 0) {
+        alert("No wallets found to seed transactions!");
+        return;
+      }
+
+      const categoriesList = catsRes.data;
+      const walletsList = walletsRes.data;
+
+      // 10 Random transactions data
+      const names = [
+        "GoFood Dinner", "Indomaret Snacks", "Gas Station Petrol",
+        "Salary Bonus", "Electricity Bill", "Cinema Tickets",
+        "Coffee Shop Latte", "Gym Membership", "Book Store",
+        "Freelance Payment"
+      ];
+
+      const descriptions = [
+        "Ordered McDonald's with friends", "Bought snacks and sodas", "Filled up motorcycle tank",
+        "Monthly performance bonus", "Paid PLN token", "Watched latest action movie",
+        "Ice caramel macchiato", "Monthly subscription", "Bought React Native programming book",
+        "UI design project milestone 1"
+      ];
+
+      const types = [
+        "expense", "expense", "expense",
+        "income", "expense", "expense",
+        "expense", "expense", "expense",
+        "income"
+      ];
+
+      const amounts = [
+        "75000", "42000", "50000",
+        "1500000", "200000", "85000",
+        "48000", "350000", "125000",
+        "2500000"
+      ];
+
+      // Call API sequentially or in parallel
+      const seedPromises = Array.from({ length: 10 }).map((_, i) => {
+        const cat = categoriesList[i % categoriesList.length];
+        const wallet = walletsList[i % walletsList.length];
+        const randomDate = new Date();
+        randomDate.setDate(randomDate.getDate() - (i + 1)); // last 10 days
+        const dateStr = randomDate.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        return apiRequest("/transaction", {
+          method: "POST",
+          body: {
+            category_id: cat._id || cat.id,
+            wallet_id: wallet._id || wallet.id,
+            amount: amounts[i],
+            type: types[i],
+            name: names[i],
+            description: descriptions[i],
+            date: dateStr,
+            input_method: "manual"
+          }
+        });
+      });
+
+      await Promise.all(seedPromises);
+      alert("Successfully seeded 10 transactions!");
+      await fetchTransactions(); // Refresh the list!
+    } catch (err: any) {
+      console.error("Failed to seed transactions:", err);
+      alert("Failed to seed: " + (err.message || err));
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
@@ -130,6 +214,26 @@ export default function Home() {
           <CurrentGoals goalsList={CURRENT_GOALS} loading={loading} />
           {/* Properti transactions sekarang dialirkan dari state API bukan dari konstanta RECENT_TRANSACTIONS mock lagi */}
           <RecentTransactions transactions={transactions} loading={loading} />
+
+          {/* Seeder button */}
+          <View style={{ marginHorizontal: 20, marginTop: 20 }}>
+            <TouchableOpacity
+              onPress={seedTransactions}
+              disabled={seeding}
+              style={{
+                backgroundColor: "#00bf71",
+                paddingVertical: 14,
+                borderRadius: 16,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: seeding ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: "white", fontSize: 15, fontWeight: "600" }}>
+                {seeding ? "Seeding 10 Transactions..." : "⚡ Seed 10 Random Transactions"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>

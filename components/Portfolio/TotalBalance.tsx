@@ -1,10 +1,92 @@
+import { Skeleton } from "@/components/Skeleton";
 import { CURRENT_GOALS } from "@/constants/goalsList";
 import { WALLET_LIST } from "@/constants/walletList";
 import { Eye, EyeOff, Target, Wallet } from "lucide-react-native";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
-const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [] }: any) => {
+const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [], loading }: any) => {
+  if (loading) {
+    return (
+      <View
+        style={{
+          marginHorizontal: 20,
+          marginTop: -24,
+          borderRadius: 15,
+          backgroundColor: "#ffffff",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.1,
+          shadowRadius: 20,
+          elevation: 10,
+          overflow: "hidden",
+        }}
+      >
+        <View style={{ padding: 20, gap: 16 }}>
+          {/* Label skeleton */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Skeleton width={110} height={14} borderRadius={7} />
+            <Skeleton width={36} height={20} borderRadius={10} />
+          </View>
+
+          {/* Balance skeleton */}
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
+            <Skeleton width={30} height={24} borderRadius={6} />
+            <Skeleton width={180} height={34} borderRadius={8} />
+          </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+
+          {/* Stats row skeleton */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* Wallets */}
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                backgroundColor: "#f0fdf8",
+                borderRadius: 8,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: "#d1fae5",
+              }}
+            >
+              <Skeleton width={28} height={28} borderRadius={10} />
+              <View style={{ gap: 4 }}>
+                <Skeleton width={50} height={10} borderRadius={5} />
+                <Skeleton width={70} height={18} borderRadius={5} />
+              </View>
+            </View>
+
+            {/* Goals */}
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: "#f0fdf8",
+                borderRadius: 8,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: "#d1fae5",
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Skeleton width={28} height={28} borderRadius={10} />
+                <View style={{ gap: 4 }}>
+                  <Skeleton width={40} height={10} borderRadius={5} />
+                  <Skeleton width={60} height={18} borderRadius={5} />
+                </View>
+              </View>
+              <Skeleton width="100%" height={5} borderRadius={3} />
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
   const walletCount = wallets.length;
   
   const totalAmount = wallets.reduce((acc: number, curr: any) => acc + curr.balance, 0);

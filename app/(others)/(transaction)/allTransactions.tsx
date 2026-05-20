@@ -5,12 +5,14 @@
  * Reuses RecentTransactionItem row component pattern from Home.
  */
 
+import { RecentTransactionItemSkeleton } from "@/components/Home/RecentTransactionItem";
 import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
+import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Filter, Search, X } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   FlatList,
   Pressable,
@@ -23,156 +25,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// ─── Extended mock transaction list ──────────────────────────────────────────
-const ALL_TRANSACTIONS = [
-  {
-    id: "tx_001",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-15",
-  },
-  {
-    id: "tx_002",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-15",
-  },
-  {
-    id: "tx_003",
-    title: "Grab Car to Office",
-    categoryId: "transport",
-    wallet: "BCA",
-    amount: 45000,
-    date: "2025-03-15",
-  },
-  {
-    id: "tx_004",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-14",
-  },
-  {
-    id: "tx_005",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-14",
-  },
-  {
-    id: "tx_006",
-    title: "Kaos Polos Uniqlo",
-    categoryId: "shopping",
-    wallet: "SeaBank",
-    amount: 150000,
-    date: "2025-03-14",
-  },
-  {
-    id: "tx_007",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-13",
-  },
-  {
-    id: "tx_008",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-13",
-  },
-  {
-    id: "tx_009",
-    title: "Tagihan Listrik",
-    categoryId: "bills_utilities",
-    wallet: "BCA",
-    amount: 200000,
-    date: "2025-03-13",
-  },
-  {
-    id: "tx_010",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-12",
-  },
-  {
-    id: "tx_011",
-    title: "Langganan Netflix",
-    categoryId: "entertainment",
-    wallet: "Gopay",
-    amount: 54000,
-    date: "2025-03-12",
-  },
-  {
-    id: "tx_012",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-11",
-  },
-  {
-    id: "tx_013",
-    title: "Kopi Susu Gula Aren",
-    categoryId: "food_beverage",
-    wallet: "Gopay",
-    amount: 25000,
-    date: "2025-03-11",
-  },
-  {
-    id: "tx_014",
-    title: "Obat Flu",
-    categoryId: "health_fitness",
-    wallet: "BCA",
-    amount: 35000,
-    date: "2025-03-10",
-  },
-  {
-    id: "tx_015",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-10",
-  },
-  {
-    id: "tx_016",
-    title: "Gym Bulanan",
-    categoryId: "health_fitness",
-    wallet: "BCA",
-    amount: 300000,
-    date: "2025-03-01",
-  },
-  {
-    id: "tx_017",
-    title: "Jatinangor House",
-    categoryId: "food_beverage",
-    wallet: "SeaBank",
-    amount: 50000,
-    date: "2025-03-01",
-  },
-];
-
-// ─── Category filter chips ────────────────────────────────────────────────────
-const FILTER_CHIPS = [
-  { id: "all", label: "All" },
-  { id: "food_beverage", label: "Food" },
-  { id: "transport", label: "Transport" },
-  { id: "shopping", label: "Shopping" },
-  { id: "bills_utilities", label: "Bills" },
-  { id: "health_fitness", label: "Health" },
-  { id: "entertainment", label: "Entertainment" },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatRupiah = (amount: number): string =>
@@ -206,20 +58,31 @@ const formatSectionDate = (dateStr: string): string => {
   });
 };
 
-type Transaction = (typeof ALL_TRANSACTIONS)[0];
+const getLocalDateString = (dateString: string) => {
+  try {
+    const d = new Date(dateString);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateString.substring(0, 10);
+  }
+};
 
 type TxSection = {
   key: string;
   title: string;
-  data: Transaction[];
+  data: any[];
   totalAmount: number;
 };
 
-const groupByDate = (txs: Transaction[]): TxSection[] => {
-  const map: Record<string, Transaction[]> = {};
+const groupByDate = (txs: any[]): TxSection[] => {
+  const map: Record<string, any[]> = {};
   txs.forEach((tx) => {
-    if (!map[tx.date]) map[tx.date] = [];
-    map[tx.date].push(tx);
+    const dateKey = getLocalDateString(tx.date);
+    if (!map[dateKey]) map[dateKey] = [];
+    map[dateKey].push(tx);
   });
   return Object.entries(map)
     .sort(([a], [b]) => b.localeCompare(a))
@@ -227,25 +90,36 @@ const groupByDate = (txs: Transaction[]): TxSection[] => {
       key: date,
       title: formatSectionDate(date),
       data,
-      totalAmount: data.reduce((s, t) => s + t.amount, 0),
+      totalAmount: data.reduce((s, t) => {
+        const amt = Number(t.amount) || 0;
+        return s + (t.type === "income" ? amt : -amt);
+      }, 0),
     }));
 };
 
 // ─── Transaction Row — mirrors RecentTransactionItem exactly ─────────────────
 const TransactionRow = ({
   item,
+  wallets,
   onPress,
 }: {
-  item: Transaction;
+  item: any;
+  wallets: any[];
   onPress: () => void;
 }) => {
-  const categoryDetail = TOP_SPENDING_CATEGORIES.find(
-    (cat) => cat.id === item.categoryId,
-  );
+  const categoryEmoticon = item.category_id?.emoticon || "💸";
+  const categoryName = item.category_id?.name || "Other";
+  const categorySlug = item.category_id?.slug || "ocean";
 
   const { theme } = useWalletTheme(
-    (categoryDetail?.themeId as WalletThemeId) ?? "ocean",
+    (categorySlug as WalletThemeId) ?? "ocean"
   );
+
+  const wallet = wallets.find((w) => (w._id || w.id) === item.wallet_id);
+  const walletName = wallet ? wallet.name : "Wallet";
+
+  const isIncome = item.type === "income";
+
   return (
     <Pressable
       onPress={onPress}
@@ -258,25 +132,29 @@ const TransactionRow = ({
             style={{ backgroundColor: theme.bgColor }}
             className="w-[45px] h-[45px] flex justify-center items-center rounded-full"
           >
-            <Text className="text-md">{categoryDetail?.icon ?? "💸"}</Text>
+            <Text className="text-md">{categoryEmoticon}</Text>
           </View>
 
           <View className="flex flex-col gap-1">
-            <Text className="text-md font-semibold" numberOfLines={1}>
-              {item.title}
+            <Text className="text-md font-semibold text-slate-800 max-w-[160px]" numberOfLines={1}>
+              {item.name}
             </Text>
             <Text className="text-xs text-[#9ca3af]">
-              {categoryDetail?.label ?? "Other"}
+              {categoryName}
             </Text>
           </View>
         </View>
 
         {/* Right: amount + wallet */}
         <View className="flex flex-col items-end">
-          <Text className="text-md text-red-500 font-semibold mb-1">
-            {`-${formatRupiah(item.amount)}`}
+          <Text
+            className={`text-md font-bold mb-0.5 ${
+              isIncome ? "text-emerald-500" : "text-red-500"
+            }`}
+          >
+            {isIncome ? `+${formatRupiah(item.amount)}` : `-${formatRupiah(item.amount)}`}
           </Text>
-          <Text className="text-sm text-[#9ca3af]">{item.wallet}</Text>
+          <Text className="text-sm text-[#9ca3af]">{walletName}</Text>
         </View>
       </View>
     </Pressable>
@@ -322,27 +200,156 @@ export default function AllTransactions() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showFilterBar, setShowFilterBar] = useState(false);
 
+  const fetchTransactionsData = async () => {
+    try {
+      setLoading(true);
+      const [txRes, walletsRes, categoriesRes] = await Promise.all([
+        apiRequest("/transaction", { method: "GET" }),
+        apiRequest("/wallets", { method: "GET" }),
+        apiRequest("/categories", { method: "GET" }),
+      ]);
+
+      if (txRes?.status === "success" && txRes.data) {
+        setTransactions(txRes.data);
+      } else if (Array.isArray(txRes)) {
+        setTransactions(txRes);
+      }
+
+      if (walletsRes?.status === "success" && walletsRes.data) {
+        setWallets(walletsRes.data);
+      } else if (Array.isArray(walletsRes)) {
+        setWallets(walletsRes);
+      }
+
+      if (categoriesRes?.status === "success" && categoriesRes.data) {
+        setCategories(categoriesRes.data);
+      } else if (Array.isArray(categoriesRes)) {
+        setCategories(categoriesRes);
+      }
+    } catch (err) {
+      console.error("Failed to fetch transactions list:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactionsData();
+  }, []);
+
+  const filterChips = useMemo(() => {
+    const list = [{ id: "all", label: "All" }];
+    categories.forEach((cat) => {
+      list.push({
+        id: cat.slug || cat._id || cat.id,
+        label: cat.name,
+      });
+    });
+    return list;
+  }, [categories]);
+
   const filtered = useMemo(() => {
-    return ALL_TRANSACTIONS.filter((tx) => {
+    return transactions.filter((tx) => {
+      const wallet = wallets.find((w) => (w._id || w.id) === tx.wallet_id);
+      const walletName = wallet ? wallet.name : "Wallet";
+
       const matchesSearch =
         search.trim() === "" ||
-        tx.title.toLowerCase().includes(search.toLowerCase()) ||
-        tx.wallet.toLowerCase().includes(search.toLowerCase());
+        (tx.name && tx.name.toLowerCase().includes(search.toLowerCase())) ||
+        walletName.toLowerCase().includes(search.toLowerCase());
 
       const matchesFilter =
-        activeFilter === "all" || tx.categoryId === activeFilter;
+        activeFilter === "all" ||
+        tx.category_id?.slug === activeFilter ||
+        tx.category_id?._id === activeFilter;
 
       return matchesSearch && matchesFilter;
     });
-  }, [search, activeFilter]);
+  }, [transactions, wallets, search, activeFilter]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
 
-  const totalFiltered = filtered.reduce((s, t) => s + t.amount, 0);
+  const totalFiltered = filtered.reduce(
+    (s, t) => s + (t.type === "income" ? Number(t.amount) : -Number(t.amount)),
+    0
+  );
+
+  if (loading) {
+    return (
+      <>
+        <StatusBar barStyle="light-content" />
+        <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
+          {/* Pinned Header */}
+          <LinearGradient
+            colors={["#00bf71", "#009e5f"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingTop: insets.top + 12,
+              paddingBottom: 20,
+              paddingHorizontal: 20,
+            }}
+          >
+            {/* Top row */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ChevronLeft size={20} color="white" strokeWidth={2.5} />
+              </TouchableOpacity>
+
+              <Text style={{ fontSize: 18, fontWeight: "800", color: "white" }}>
+                Transaction List
+              </Text>
+
+              <View style={{ width: 36 }} />
+            </View>
+
+            {/* Search bar skeleton */}
+            <View
+              style={{
+                height: 48,
+                backgroundColor: "rgba(255,255,255,0.18)",
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.25)",
+              }}
+            />
+          </LinearGradient>
+
+          {/* List Skeleton */}
+          <View style={{ flex: 1, backgroundColor: "white", marginTop: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <RecentTransactionItemSkeleton key={i} />
+            ))}
+          </View>
+        </View>
+      </>
+    );
+  }
 
   return (
     <>
@@ -451,7 +458,7 @@ export default function AllTransactions() {
           >
             <FlatList
               horizontal
-              data={FILTER_CHIPS}
+              data={filterChips}
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -482,15 +489,23 @@ export default function AllTransactions() {
           <Text style={{ fontSize: 12, color: "#9ca3af", fontWeight: "600" }}>
             {filtered.length} transactions
           </Text>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: "#ef4444" }}>
-            -{formatRupiah(totalFiltered)}
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: totalFiltered >= 0 ? "#10b981" : "#ef4444",
+            }}
+          >
+            {totalFiltered >= 0
+              ? `+${formatRupiah(totalFiltered)}`
+              : `-${formatRupiah(Math.abs(totalFiltered))}`}
           </Text>
         </View>
 
         {/* ── Transaction list ──────────────────────────────────────────── */}
-        <SectionList<Transaction, TxSection>
+        <SectionList<any, TxSection>
           sections={sections}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id || item.id}
           showsVerticalScrollIndicator={false}
           style={{ flex: 1, backgroundColor: "#f5f6fa" }}
           contentContainerStyle={{
@@ -512,44 +527,49 @@ export default function AllTransactions() {
               </Text>
             </View>
           }
-          renderSectionHeader={({ section }) => (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                backgroundColor: "#f5f6fa",
-                paddingHorizontal: 20,
-                paddingVertical: 8,
-                marginTop: 4,
-              }}
-            >
-              <Text
+          renderSectionHeader={({ section }) => {
+            const isNetIncome = section.totalAmount >= 0;
+            const absFlow = Math.abs(section.totalAmount);
+            return (
+              <View
                 style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  color: "#9ca3af",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: "#f5f6fa",
+                  paddingHorizontal: 20,
+                  paddingTop: 12,
+                  paddingBottom: 8,
                 }}
               >
-                {section.title}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "600",
-                  color: "#ef4444",
-                }}
-              >
-                -{formatRupiah(section.totalAmount)}
-              </Text>
-            </View>
-          )}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: "#9ca3af",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {section.title}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color: isNetIncome ? "#10b981" : "#ef4444",
+                  }}
+                >
+                  {isNetIncome ? `+${formatRupiah(absFlow)}` : `-${formatRupiah(absFlow)}`}
+                </Text>
+              </View>
+            );
+          }}
           renderItem={({ item }) => (
             <View style={{ backgroundColor: "white" }}>
               <TransactionRow
                 item={item}
+                wallets={wallets}
                 onPress={() => router.push("/(others)/(transaction)/editForm")}
               />
             </View>
