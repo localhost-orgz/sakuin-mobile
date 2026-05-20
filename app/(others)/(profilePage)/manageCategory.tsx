@@ -30,6 +30,8 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { apiRequest } from "@/utils/api";
+import { Skeleton } from "@/components/Skeleton";
 import {
   Alert,
   Animated,
@@ -898,7 +900,8 @@ export default function ManageCategory() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -906,6 +909,38 @@ export default function ManageCategory() {
   const [editingCategory, setEditingCategory] = useState<Category | undefined>(
     undefined,
   );
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const res = await apiRequest("/categories", { method: "GET" });
+      if (res?.status === "success" && res.data) {
+        const mapped = res.data.map((c: any) => ({
+          id: c._id || c.id,
+          icon: c.emoticon || c.icon || "🏷️",
+          label: c.name || c.label || "Unnamed",
+          themeId: (c.themeId || c.theme_id || "ocean") as WalletThemeId,
+        }));
+        setCategories(mapped);
+      } else if (Array.isArray(res)) {
+        const mapped = res.map((c: any) => ({
+          id: c._id || c.id,
+          icon: c.emoticon || c.icon || "🏷️",
+          label: c.name || c.label || "Unnamed",
+          themeId: (c.themeId || c.theme_id || "ocean") as WalletThemeId,
+        }));
+        setCategories(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const filteredCategories = useMemo(() => {
     if (!search.trim()) return categories;
@@ -925,33 +960,72 @@ export default function ManageCategory() {
     setSheetVisible(true);
   };
 
-  const handleSave = (data: {
+  const handleSave = async (data: {
     name: string;
     icon: string;
     themeId: WalletThemeId;
   }) => {
-    if (sheetMode === "add") {
-      const newCat: Category = {
-        id: Date.now().toString(),
-        label: data.name,
-        icon: data.icon,
-        themeId: data.themeId,
-      };
-      setCategories((prev) => [...prev, newCat]);
-    } else if (editingCategory) {
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === editingCategory.id
-            ? { ...c, label: data.name, icon: data.icon, themeId: data.themeId }
-            : c,
-        ),
-      );
+    try {
+      setSheetVisible(false);
+      setLoading(true);
+      if (sheetMode === "add") {
+        await apiRequest("/categories", {
+          method: "POST",
+          body: {
+            name: data.name,
+            emoticon: data.icon,
+            themeId: data.themeId,
+          },
+        });
+      } else if (editingCategory) {
+        let updateSuccess = false;
+        try {
+          await apiRequest(`/categories/${editingCategory.id}`, {
+            method: "PUT",
+            body: {
+              name: data.name,
+              emoticon: data.icon,
+              themeId: data.themeId,
+            },
+          });
+          updateSuccess = true;
+        } catch (putErr) {
+          console.warn("PUT failed, trying PATCH...", putErr);
+        }
+
+        if (!updateSuccess) {
+          await apiRequest(`/categories/${editingCategory.id}`, {
+            method: "PATCH",
+            body: {
+              name: data.name,
+              emoticon: data.icon,
+              themeId: data.themeId,
+            },
+          });
+        }
+      }
+      await fetchCategories();
+    } catch (err) {
+      console.error("Error saving category:", err);
+      Alert.alert("Error", "Failed to save category. Please try again.");
+      setLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (editingCategory) {
-      setCategories((prev) => prev.filter((c) => c.id !== editingCategory.id));
+      try {
+        setSheetVisible(false);
+        setLoading(true);
+        await apiRequest(`/categories/${editingCategory.id}`, {
+          method: "DELETE",
+        });
+        await fetchCategories();
+      } catch (err) {
+        console.error("Error deleting category:", err);
+        Alert.alert("Error", "Failed to delete category. Please try again.");
+        setLoading(false);
+      }
     }
   };
 
@@ -1085,7 +1159,7 @@ export default function ManageCategory() {
 
         {/* ── Category list ── */}
         <FlatList
-          data={filteredCategories}
+          data={loading ? [] : filteredCategories}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -1094,17 +1168,57 @@ export default function ManageCategory() {
           }}
           style={{ backgroundColor: "white" }}
           ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
-              <Text style={{ fontSize: 32 }}>🏷️</Text>
-              <Text
-                style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}
-              >
-                No categories found
-              </Text>
-              <Text style={{ fontSize: 13, color: "#9ca3af" }}>
-                Try a different search or add a new one
-              </Text>
-            </View>
+            loading ? (
+              <View style={{ paddingHorizontal: 16, gap: 14, paddingTop: 14 }}>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: 24,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: "#f1f5f9",
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Skeleton
+                      width={58}
+                      height={58}
+                      borderRadius={20}
+                      style={{ marginRight: 16, backgroundColor: "#e2e8f0" }}
+                    />
+                    <View style={{ flex: 1, gap: 8 }}>
+                      <Skeleton
+                        width={140}
+                        height={16}
+                        borderRadius={6}
+                        style={{ backgroundColor: "#e2e8f0" }}
+                      />
+                      <Skeleton
+                        width={90}
+                        height={12}
+                        borderRadius={4}
+                        style={{ backgroundColor: "#e2e8f0" }}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
+                <Text style={{ fontSize: 32 }}>🏷️</Text>
+                <Text
+                  style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}
+                >
+                  No categories found
+                </Text>
+                <Text style={{ fontSize: 13, color: "#9ca3af" }}>
+                  Try a different search or add a new one
+                </Text>
+              </View>
+            )
           }
           renderItem={({ item }) => {
             // Derive colors live from useWalletTheme

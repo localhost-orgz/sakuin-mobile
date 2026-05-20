@@ -5,10 +5,11 @@
  *   npx expo install react-native-gifted-charts expo-linear-gradient react-native-svg
  */
 
+import useWalletTheme, { getWalletTheme } from "@/hooks/useWalletTheme";
 import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -59,7 +60,7 @@ type MonthKey =
   | "Nov"
   | "Dec";
 
-type CatId = "food" | "transport" | "shopping" | "health" | "other";
+type CatId = string;
 
 type DayExpense = {
   day: DayKey;
@@ -78,7 +79,15 @@ type WeekData = {
   days: DayExpense[];
 };
 
-const DAYS_OF_WEEK: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS_OF_WEEK: DayKey[] = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+];
 const DAY_MAP: Record<number, DayKey> = {
   1: "Mon",
   2: "Tue",
@@ -146,14 +155,13 @@ const formatWeekLabel = (monday: Date) => {
 };
 
 // ─── Category definitions ─────────────────────────────────────────────────────
-type CatDef = { id: CatId; label: string; icon: string; color: string };
-const CATS: CatDef[] = [
-  { id: "food", label: "Food & Drink", icon: "🍔", color: GREEN },
-  { id: "transport", label: "Transport", icon: "🚗", color: BLUE },
-  { id: "shopping", label: "Shopping", icon: "🛍️", color: AMBER },
-  { id: "health", label: "Health", icon: "💊", color: ROSE },
-  { id: "other", label: "Other", icon: "📦", color: VIOLET },
-];
+type CatDef = {
+  id: CatId;
+  label: string;
+  icon: string;
+  color: string;
+  themeId: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const rp = (n: number) =>
@@ -241,6 +249,7 @@ const CategoryRow = ({
 }) => {
   const pct = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
   const scale = useRef(new Animated.Value(1)).current;
+  const { theme } = useWalletTheme(cat.themeId as any);
 
   const handlePress = () => {
     Animated.sequence([
@@ -280,7 +289,7 @@ const CategoryRow = ({
             width: 38,
             height: 38,
             borderRadius: 10,
-            backgroundColor: `${cat.color}22`,
+            backgroundColor: theme.iconBgColor,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -325,7 +334,7 @@ const CategoryRow = ({
         </View>
         <View
           style={{
-            backgroundColor: `${cat.color}18`,
+            backgroundColor: theme.iconBgColor,
             paddingHorizontal: 7,
             paddingVertical: 3,
             borderRadius: 20,
@@ -413,18 +422,72 @@ export default function Analytics() {
   const [selectedBar, setSelectedBar] = useState<string | null>(null); // day or month label
   const [selectedCat, setSelectedCat] = useState<CatId | null>(null);
 
-  // ── Animation keys / values ────────────────────────────────────────────────
-  const [animKey, setAnimKey] = useState(0);
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const cardAnim = useRef(new Animated.Value(0)).current;
-  const pieAnim = useRef(new Animated.Value(0)).current;
-  const catAnims = useRef(CATS.map(() => new Animated.Value(0))).current;
-
   const resolveCategory = (catIdOrObj: any) => {
     if (!catIdOrObj) return null;
     if (typeof catIdOrObj === "object") return catIdOrObj;
     return categories.find((c) => (c._id || c.id) === catIdOrObj) || null;
   };
+
+  const dynamicCats = useMemo<CatDef[]>(() => {
+    const list = categories.map((cat: any) => {
+      const id = cat._id || cat.id;
+      const themeId = cat.themeId || cat.theme_id || "ocean";
+      const theme = getWalletTheme(themeId);
+      return {
+        id,
+        label: cat.name || cat.label || "Unnamed",
+        icon: cat.emoticon || cat.icon || "🏷️",
+        color: theme.accentColor || GREEN,
+        themeId,
+      };
+    });
+
+    // Only append 'other' fallback category if there are expenses with category_id that doesn't match any user categories.
+    const hasOtherSpending = transactions.some((tx: any) => {
+      if (tx.type !== "expense") return false;
+      const catObj = resolveCategory(tx.category_id);
+      return !catObj;
+    });
+
+    if (hasOtherSpending && !list.some((c) => c.id === "other")) {
+      list.push({
+        id: "other",
+        label: "Other",
+        icon: "📦",
+        color: VIOLET,
+        themeId: "violet",
+      });
+    }
+    return list;
+  }, [categories, transactions]);
+
+  const zeroBreakdown = () => {
+    const res: Record<string, number> = {};
+    dynamicCats.forEach((c) => {
+      res[c.id] = 0;
+    });
+    return res;
+  };
+
+  const sumBreakdowns = (bds: Record<string, number>[]) => {
+    const result = zeroBreakdown();
+    bds.forEach((bd) => {
+      dynamicCats.forEach((c) => {
+        result[c.id] += bd[c.id] || 0;
+      });
+    });
+    return result;
+  };
+
+  // ── Animation keys / values ────────────────────────────────────────────────
+  const [animKey, setAnimKey] = useState(0);
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const cardAnim = useRef(new Animated.Value(0)).current;
+  const pieAnim = useRef(new Animated.Value(0)).current;
+  const catAnims = useMemo(
+    () => dynamicCats.map(() => new Animated.Value(0)),
+    [dynamicCats],
+  );
 
   const fetchAnalyticsData = async () => {
     try {
@@ -568,9 +631,13 @@ export default function Analytics() {
           dayObj.total += amt;
 
           const catObj = resolveCategory(tx.category_id);
-          const catId = mapCategoryToId(catObj);
+          const catId = catObj ? catObj._id || catObj.id : "other";
 
-          dayObj.breakdown[catId] += amt;
+          if (dayObj.breakdown[catId] !== undefined) {
+            dayObj.breakdown[catId] += amt;
+          } else {
+            dayObj.breakdown["other"] += amt;
+          }
         }
       }
     });
@@ -578,7 +645,7 @@ export default function Analytics() {
     return Object.entries(weeksMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([_, val]) => val);
-  }, [transactions, categories]);
+  }, [transactions, dynamicCats]);
 
   // Group annual data dynamically from transactions
   const annualData = useMemo(() => {
@@ -619,9 +686,13 @@ export default function Analytics() {
           monthObj.total += amt;
 
           const catObj = resolveCategory(tx.category_id);
-          const catId = mapCategoryToId(catObj);
+          const catId = catObj ? catObj._id || catObj.id : "other";
 
-          monthObj.breakdown[catId] += amt;
+          if (monthObj.breakdown[catId] !== undefined) {
+            monthObj.breakdown[catId] += amt;
+          } else {
+            monthObj.breakdown["other"] += amt;
+          }
         }
       }
     });
@@ -630,7 +701,7 @@ export default function Analytics() {
       years: yearRange,
       data: dataMap,
     };
-  }, [transactions, categories]);
+  }, [transactions, dynamicCats]);
 
   // Sync index hooks to use latest datasets by default
   useEffect(() => {
@@ -707,7 +778,10 @@ export default function Analytics() {
 
   const displayBreakdown: Record<CatId, number> = selectedCat
     ? (Object.fromEntries(
-        CATS.map((c) => [c.id, c.id === selectedCat ? breakdown[c.id] : 0]),
+        dynamicCats.map((c) => [
+          c.id,
+          c.id === selectedCat ? breakdown[c.id] : 0,
+        ]),
       ) as Record<CatId, number>)
     : breakdown;
 
@@ -805,12 +879,14 @@ export default function Analytics() {
         });
 
   const maxBarVal = Math.max(...barData.map((d) => d.value), 1);
-  const pieData = CATS.map((c) => ({
-    value: displayBreakdown[c.id],
-    color: displayBreakdown[c.id] === 0 ? "#e5e7eb" : c.color,
-    focused: selectedCat === c.id,
-    catId: c.id,
-  })).filter((d) => d.value > 0 || selectedCat === null);
+  const pieData = dynamicCats
+    .map((c) => ({
+      value: displayBreakdown[c.id] || 0,
+      color: displayBreakdown[c.id] === 0 ? "#e5e7eb" : c.color,
+      focused: selectedCat === c.id,
+      catId: c.id,
+    }))
+    .filter((d) => d.value > 0 || selectedCat === null);
 
   const navLabel =
     mode === "weekly" ? dynamicWeeks[weekIdx]?.label || "" : String(year);
@@ -824,7 +900,7 @@ export default function Analytics() {
   const filterLabel = selectedBar
     ? `${mode === "weekly" ? selectedBar : selectedBar} only`
     : selectedCat
-      ? `${CATS.find((c) => c.id === selectedCat)?.label} only`
+      ? `${dynamicCats.find((c) => c.id === selectedCat)?.label} only`
       : null;
 
   if (loading) {
@@ -1217,7 +1293,7 @@ export default function Analytics() {
                       }}
                     >
                       {selectedCat
-                        ? CATS.find((c) => c.id === selectedCat)?.label
+                        ? dynamicCats.find((c) => c.id === selectedCat)?.label
                         : "Total"}
                     </Text>
                     <Text
@@ -1244,7 +1320,7 @@ export default function Analytics() {
                 marginBottom: 16,
               }}
             >
-              {CATS.map((c) => (
+              {dynamicCats.map((c) => (
                 <Pressable
                   key={c.id}
                   onPress={() => handleCatPress(c.id)}
@@ -1278,7 +1354,7 @@ export default function Analytics() {
 
             {/* Category rows */}
             <View style={{ gap: 8 }}>
-              {CATS.map((cat, i) => (
+              {dynamicCats.map((cat, i) => (
                 <CategoryRow
                   key={cat.id}
                   cat={cat}
@@ -1345,7 +1421,7 @@ export default function Analytics() {
                 }}
               >
                 {selectedCat
-                  ? `You spent ${rp(breakdown[selectedCat])} on ${CATS.find((c) => c.id === selectedCat)?.label}${selectedBar ? ` on ${selectedBar}` : ` this ${mode === "weekly" ? "week" : "year"}`}.`
+                  ? `You spent ${rp(breakdown[selectedCat])} on ${dynamicCats.find((c) => c.id === selectedCat)?.label}${selectedBar ? ` on ${selectedBar}` : ` this ${mode === "weekly" ? "week" : "year"}`}.`
                   : selectedBar
                     ? `Total expense on ${selectedBar}: ${rp(Object.values(breakdown).reduce((s, v) => s + v, 0))}.`
                     : mode === "weekly"
@@ -1361,18 +1437,6 @@ export default function Analytics() {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-function zeroBreakdown(): Record<CatId, number> {
-  return { food: 0, transport: 0, shopping: 0, health: 0, other: 0 };
-}
-function sumBreakdowns(bds: Record<CatId, number>[]): Record<CatId, number> {
-  const result = zeroBreakdown();
-  bds.forEach((bd) => {
-    (Object.keys(result) as CatId[]).forEach((k) => {
-      result[k] += bd[k];
-    });
-  });
-  return result;
-}
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const $card: ViewStyle = {

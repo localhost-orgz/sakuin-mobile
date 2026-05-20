@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -18,7 +18,6 @@ import {
 } from "@/components/Home/TopSection";
 import TopSpendCategory from "@/components/Home/TopSpendCategory";
 import { CURRENT_GOALS } from "@/constants/goalsList";
-import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import { apiRequest } from "@/utils/api";
 
 export default function Home() {
@@ -27,6 +26,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [wallets, setWallets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]); // State untuk menyimpan data transaksi dari API
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +55,17 @@ export default function Home() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await apiRequest("/categories", { method: "GET" });
+      if (res.status === "success" && res.data) {
+        setCategories(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    }
+  };
+
   // Fungsi fetch transactions disamakan polanya dengan fetchWallets
   const fetchTransactions = async () => {
     try {
@@ -71,7 +82,12 @@ export default function Home() {
     try {
       setLoading(true);
       // Menjalankan fetch paralel untuk user, wallets, dan transactions bersamaan
-      await Promise.all([fetchUser(), fetchWallets(), fetchTransactions()]);
+      await Promise.all([
+        fetchUser(),
+        fetchWallets(),
+        fetchTransactions(),
+        fetchCategories(),
+      ]);
     } catch (err) {
       console.error("Error loading home data:", err);
     } finally {
@@ -86,7 +102,12 @@ export default function Home() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     // Ditambahkan fetchTransactions di dalam Promise.all onRefresh
-    await Promise.all([fetchUser(), fetchWallets(), fetchTransactions()]);
+    await Promise.all([
+      fetchUser(),
+      fetchWallets(),
+      fetchTransactions(),
+      fetchCategories(),
+    ]);
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
@@ -176,6 +197,39 @@ export default function Home() {
     }
   };
 
+  const topCategoriesData = useMemo(() => {
+    const expenses = transactions.filter((t: any) => t.type === "expense");
+
+    const sums: Record<string, number> = {};
+    expenses.forEach((tx: any) => {
+      const catId =
+        typeof tx.category_id === "object" && tx.category_id
+          ? tx.category_id._id || tx.category_id.id
+          : tx.category_id;
+      if (catId) {
+        sums[catId] = (sums[catId] || 0) + (Number(tx.amount) || 0);
+      }
+    });
+
+    const mapped = categories.map((cat: any) => {
+      const catId = cat._id || cat.id;
+      const totalSpend = sums[catId] || 0;
+      return {
+        id: catId,
+        label: cat.name || cat.label,
+        icon: cat.emoticon || cat.icon || "🏷️",
+        amount: new Intl.NumberFormat("id-ID").format(totalSpend),
+        themeId: cat.themeId || cat.theme_id || "ocean",
+        rawAmount: totalSpend,
+      };
+    });
+
+    const spendingOnly = mapped.filter((c) => c.rawAmount > 0);
+    const listToReturn = spendingOnly.length > 0 ? spendingOnly : mapped;
+
+    return [...listToReturn].sort((a, b) => b.rawAmount - a.rawAmount);
+  }, [transactions, categories]);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
       <StatusBar style="light" />
@@ -210,7 +264,7 @@ export default function Home() {
 
         {/* ── Content sections ── */}
         <View style={{ marginTop: 56, marginBottom: 0 }}>
-          <TopSpendCategory TopCategories={TOP_SPENDING_CATEGORIES} loading={loading} />
+          <TopSpendCategory TopCategories={topCategoriesData} loading={loading} />
           <CurrentGoals goalsList={CURRENT_GOALS} loading={loading} />
           {/* Properti transactions sekarang dialirkan dari state API bukan dari konstanta RECENT_TRANSACTIONS mock lagi */}
           <RecentTransactions transactions={transactions} loading={loading} />
