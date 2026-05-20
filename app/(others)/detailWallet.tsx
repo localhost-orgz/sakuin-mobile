@@ -1,6 +1,6 @@
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { apiRequest } from "@/utils/api"; //
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import {
   ArrowLeftRight,
   ChevronLeft,
@@ -143,7 +143,7 @@ export default function DetailWallet() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch data dari API
-  const fetchWalletDetail = async () => {
+  const fetchWalletDetail = useCallback(async () => {
     try {
       const response = await apiRequest(`/wallets/${walletId}`);
       if (response.status === "success") {
@@ -155,16 +155,18 @@ export default function DetailWallet() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchWalletDetail();
   }, [walletId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchWalletDetail();
+    }, [fetchWalletDetail])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchWalletDetail();
-  }, [walletId]);
+  }, [fetchWalletDetail]);
 
   // Tema dinamis berdasarkan field 'color' dari API
   // const { theme } = useWalletTheme((wallet?.color as WalletThemeId) || "blue");
@@ -323,7 +325,15 @@ export default function DetailWallet() {
           elevation: 6,
         }}
       >
-        <TouchableOpacity style={{ flex: 1, alignItems: "center", gap: 8 }}>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: "/(others)/(transaction)/addForm",
+              params: { walletId },
+            })
+          }
+          style={{ flex: 1, alignItems: "center", gap: 8 }}
+        >
           <View
             style={{
               width: 48,
@@ -350,7 +360,15 @@ export default function DetailWallet() {
 
         <View style={{ width: 1, backgroundColor: "#f3f4f6" }} />
 
-        <TouchableOpacity style={{ flex: 1, alignItems: "center", gap: 8 }}>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: "/(others)/(transaction)/transferForm",
+              params: { walletId },
+            })
+          }
+          style={{ flex: 1, alignItems: "center", gap: 8 }}
+        >
           <View
             style={{
               width: 48,

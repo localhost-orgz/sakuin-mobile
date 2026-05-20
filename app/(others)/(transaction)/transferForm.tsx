@@ -1,5 +1,5 @@
 import useWalletTheme from "@/hooks/useWalletTheme";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowDownUp, CheckCircle2, ChevronDown } from "lucide-react-native";
 import { useRef, useState, useEffect } from "react";
 import {
@@ -114,6 +114,7 @@ const SuccessModal = ({ visible, amount, from, to, onClose }: any) => {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function TransferPage() {
   const router = useRouter();
+  const { walletId } = useLocalSearchParams<{ walletId?: string }>();
   const insets = useSafeAreaInsets();
 
   const [wallets, setWallets] = useState<any[]>([]);
@@ -168,8 +169,14 @@ export default function TransferPage() {
         setWallets(mappedWallets);
 
         if (mappedWallets.length > 0) {
-          setSelectedFromWallet(mappedWallets[0]);
-          setSelectedToWallet(mappedWallets[1] || mappedWallets[0]);
+          // Preselect source wallet if walletId matches
+          const preselectedFrom = mappedWallets.find((w: any) => w.id === walletId);
+          const fromWalletObj = preselectedFrom || mappedWallets[0];
+          setSelectedFromWallet(fromWalletObj);
+          
+          // Find next wallet to set as default destination
+          const remainingWallets = mappedWallets.filter((w: any) => w.id !== fromWalletObj.id);
+          setSelectedToWallet(remainingWallets[0] || fromWalletObj);
         }
       } catch (err) {
         console.error("Failed to load transfer page data:", err);
@@ -180,7 +187,7 @@ export default function TransferPage() {
     };
 
     loadData();
-  }, []);
+  }, [walletId]);
 
   const openFromWalletSheet = () => {
     fromWalletBottomSheet.current?.expand();

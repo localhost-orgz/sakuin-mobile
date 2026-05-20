@@ -3,7 +3,7 @@ import CurrencyBottomSheet from "@/components/Form/CurrencyBottomSheet";
 import WalletBottomSheet from "@/components/Form/WalletBottomSheet";
 import { CURRENCY_LIST } from "@/constants/currencyList";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { CalendarDays, ChevronDown } from "lucide-react-native";
 import { useRef, useState, useEffect } from "react";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransaction() {
+  const { walletId } = useLocalSearchParams<{ walletId?: string }>();
   const [transactionType, setTransactionType] = useState("expense");
   const [amount, setAmount] = useState(""); // Nilai awal string kosong agar placeholder muncul
   const [date, setDate] = useState(new Date());
@@ -63,7 +64,11 @@ export default function AddTransaction() {
         if (walletsRes?.status === "success") {
           setWallets(walletsRes.data);
           if (walletsRes.data.length > 0) {
-            setSelectedWallet(walletsRes.data[0]);
+            // Preselect wallet if walletId matches
+            const preselectedWallet = walletsRes.data.find(
+              (w: any) => (w._id || w.id) === walletId
+            );
+            setSelectedWallet(preselectedWallet || walletsRes.data[0]);
           }
         }
       } catch (error) {
@@ -74,7 +79,7 @@ export default function AddTransaction() {
     }
 
     fetchData();
-  }, []);
+  }, [walletId]);
 
   // -- helper format tanggal untuk tampilan UI
   const formatDate = (d: Date) => {
