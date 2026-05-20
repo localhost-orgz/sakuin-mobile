@@ -29,7 +29,11 @@ const AmountSection = ({ amount, onAmount }: any) => {
         <Text className="text-2xl font-bold text-[#9ca3af]">Rp</Text>
         <TextInput
           value={amount}
-          onChangeText={onAmount}
+          onChangeText={(text) => {
+            const cleanNumber = text.replace(/[^0-9]/g, ""); // Hapus karakter non-angka
+            const formatted = cleanNumber.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Tambahkan titik setiap kelipatan 3 digit
+            onAmount(formatted);
+          }}
           placeholder="0"
           placeholderTextColor="#d1d5db"
           keyboardType="numeric"
