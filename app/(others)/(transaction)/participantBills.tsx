@@ -4,10 +4,13 @@ import {
   type ParticipantBill,
 } from "@/utils/splitSession";
 import { useRouter } from "expo-router";
-import { CheckCircle2, ChevronLeft, User, Users } from "lucide-react-native";
+import { CheckCircle2, ChevronLeft, Share2, User } from "lucide-react-native";
 import React, { useMemo } from "react";
 import {
+  Alert,
+  Linking,
   ScrollView,
+  Share,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -106,6 +109,46 @@ export default function ParticipantBills() {
   const grandTotal = session?.amount ?? 0;
   const splitTotal = bills.reduce((sum, b) => sum + b.total, 0);
 
+  const buildShareText = (): string => {
+    const lines: string[] = [];
+    lines.push("🧾 *Rincian Tagihan Bersama*");
+    lines.push(`Total Struk: *${formatRp(grandTotal)}*`);
+    lines.push(`${session?.participants.length ?? 0} Partisipan\n`);
+
+    bills.forEach((bill) => {
+      lines.push(`👤 *${bill.participant.name}*`);
+      if (bill.items.length === 0) {
+        lines.push("  • Tidak ada item ditugaskan");
+      } else {
+        bill.items.forEach((item) => {
+          const shared =
+            item.sharedWith > 1 ? ` (dibagi ${item.sharedWith})` : "";
+          lines.push(`  • ${item.name}${shared}: *${formatRp(item.share)}*`);
+        });
+      }
+      lines.push(`  💰 Subtotal: *${formatRp(bill.total)}*\n`);
+    });
+
+    lines.push("_Dikirim via Sakuin App_ 🌿");
+    return lines.join("\n");
+  };
+
+  const handleShareWhatsApp = async () => {
+    const text = buildShareText();
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Share.share({ message: text });
+      }
+    } catch {
+      Alert.alert("Gagal", "Tidak dapat membuka opsi berbagi.");
+    }
+  };
+
   if (!session) {
     return (
       <>
@@ -141,7 +184,13 @@ export default function ParticipantBills() {
           <Text className="text-white text-[17px] font-semibold flex-1">
             Tagihan Per Orang
           </Text>
-          <Users size={20} color="white" />
+          <TouchableOpacity
+            onPress={handleShareWhatsApp}
+            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+            activeOpacity={0.75}
+          >
+            <Share2 size={18} color="white" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -181,13 +230,26 @@ export default function ParticipantBills() {
               {formatRp(splitTotal)}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.replace("/(main)/home")}
-            className="bg-[#00bf71] h-14 rounded-2xl items-center justify-center flex-row"
-          >
-            <CheckCircle2 size={20} color="white" />
-            <Text className="text-white font-bold text-base ml-2">Selesai</Text>
-          </TouchableOpacity>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={handleShareWhatsApp}
+              activeOpacity={0.8}
+              style={{ borderWidth: 2, borderColor: "#00bf71" }}
+              className="flex-1 h-14 rounded-2xl items-center justify-center flex-row"
+            >
+              <Share2 size={18} color="#00bf71" />
+              <Text className="text-[#00bf71] font-bold text-base ml-2">
+                Bagikan
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.replace("/(main)/home")}
+              className="flex-1 bg-[#00bf71] h-14 rounded-2xl items-center justify-center flex-row"
+            >
+              <CheckCircle2 size={20} color="white" />
+              <Text className="text-white font-bold text-base ml-2">Selesai</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </>

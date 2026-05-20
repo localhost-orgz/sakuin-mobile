@@ -8,7 +8,7 @@ import {
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Check,
   ChevronLeft,
@@ -462,6 +462,13 @@ const FocusReticle = ({ x, y }: { x: number; y: number }) => {
 export default function SakuSnap() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { imageUri: imageUriParam } = useLocalSearchParams<{
+    imageUri?: string | string[];
+  }>();
+
+  const initialGalleryUri = Array.isArray(imageUriParam)
+    ? imageUriParam[0]
+    : imageUriParam;
 
   // Permissions
   const [camPerm, requestCamPerm] = useCameraPermissions();
@@ -478,7 +485,10 @@ export default function SakuSnap() {
 
   // UI state
   const [isCapturing, setIsCapturing] = useState(false);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    initialGalleryUri ?? null,
+  );
+  const isGalleryImport = Boolean(initialGalleryUri);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(
     null,
@@ -601,12 +611,12 @@ export default function SakuSnap() {
     }
   };
 
-  // ── Permission gates ────────────────────────────────────────────────────────
-  if (!camPerm) {
+  // ── Permission gates (skip when opening with a gallery image) ───────────────
+  if (!isGalleryImport && !camPerm) {
     return <View style={{ flex: 1, backgroundColor: "black" }} />;
   }
 
-  if (!camPerm.granted) {
+  if (!isGalleryImport && !camPerm?.granted) {
     return (
       <View
         style={{
@@ -683,7 +693,8 @@ export default function SakuSnap() {
     <View style={{ flex: 1, backgroundColor: "black" }}>
       <StatusBar barStyle="light-content" />
 
-      {/* ── Camera Viewfinder ─────────────────────────────────────────────── */}
+      {/* ── Camera Viewfinder (hidden when previewing gallery import) ─────── */}
+      {!photoUri && (
       <Pressable style={{ flex: 1 }} onPress={handleTap}>
         <Animated.View style={[{ flex: 1 }, flipStyle]}>
           <CameraView
@@ -738,8 +749,10 @@ export default function SakuSnap() {
           ))}
         </View>
       </Pressable>
+      )}
 
       {/* ── Top Controls ──────────────────────────────────────────────────── */}
+      {!photoUri && (
       <View
         style={{
           position: "absolute",
@@ -804,8 +817,10 @@ export default function SakuSnap() {
           <FlipHorizontal2 size={18} color="white" strokeWidth={2} />
         </TouchableOpacity>
       </View>
+      )}
 
       {/* ── Bottom Controls ───────────────────────────────────────────────── */}
+      {!photoUri && (
       <View
         style={{
           position: "absolute",
@@ -918,12 +933,19 @@ export default function SakuSnap() {
           </View>
         </View>
       </View>
+      )}
 
       {/* ── Photo Preview ─────────────────────────────────────────────────── */}
       {photoUri && (
         <PreviewOverlay
           uri={photoUri}
-          onRetake={() => setPhotoUri(null)}
+          onRetake={() => {
+            if (isGalleryImport) {
+              router.back();
+            } else {
+              setPhotoUri(null);
+            }
+          }}
           onSave={savePhoto}
         />
       )}
