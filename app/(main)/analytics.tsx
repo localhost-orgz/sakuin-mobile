@@ -5,9 +5,10 @@
  *   npx expo install react-native-gifted-charts expo-linear-gradient react-native-svg
  */
 
+import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   Animated,
   Dimensions,
@@ -72,545 +73,77 @@ type MonthExpense = {
   breakdown: Record<CatId, number>;
 };
 
-// ─── Mock weekly data (4 weeks per "week index") ──────────────────────────────
-const ALL_WEEKS: DayExpense[][] = [
-  // Week 0: Feb 1–7
-  [
-    {
-      day: "Mon",
-      total: 150_000,
-      breakdown: {
-        food: 70_000,
-        transport: 30_000,
-        shopping: 20_000,
-        health: 20_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Tue",
-      total: 380_000,
-      breakdown: {
-        food: 120_000,
-        transport: 80_000,
-        shopping: 100_000,
-        health: 50_000,
-        other: 30_000,
-      },
-    },
-    {
-      day: "Wed",
-      total: 200_000,
-      breakdown: {
-        food: 80_000,
-        transport: 40_000,
-        shopping: 50_000,
-        health: 10_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Thu",
-      total: 120_000,
-      breakdown: {
-        food: 50_000,
-        transport: 25_000,
-        shopping: 20_000,
-        health: 15_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Fri",
-      total: 500_000,
-      breakdown: {
-        food: 180_000,
-        transport: 100_000,
-        shopping: 140_000,
-        health: 50_000,
-        other: 30_000,
-      },
-    },
-    {
-      day: "Sat",
-      total: 90_000,
-      breakdown: {
-        food: 40_000,
-        transport: 10_000,
-        shopping: 25_000,
-        health: 5_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Sun",
-      total: 60_000,
-      breakdown: {
-        food: 30_000,
-        transport: 5_000,
-        shopping: 10_000,
-        health: 5_000,
-        other: 10_000,
-      },
-    },
-  ],
-  // Week 1: Feb 8–14
-  [
-    {
-      day: "Mon",
-      total: 210_000,
-      breakdown: {
-        food: 90_000,
-        transport: 50_000,
-        shopping: 30_000,
-        health: 20_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Tue",
-      total: 330_000,
-      breakdown: {
-        food: 110_000,
-        transport: 70_000,
-        shopping: 90_000,
-        health: 40_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Wed",
-      total: 180_000,
-      breakdown: {
-        food: 70_000,
-        transport: 40_000,
-        shopping: 40_000,
-        health: 20_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Thu",
-      total: 250_000,
-      breakdown: {
-        food: 100_000,
-        transport: 60_000,
-        shopping: 50_000,
-        health: 20_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Fri",
-      total: 400_000,
-      breakdown: {
-        food: 140_000,
-        transport: 80_000,
-        shopping: 110_000,
-        health: 40_000,
-        other: 30_000,
-      },
-    },
-    {
-      day: "Sat",
-      total: 110_000,
-      breakdown: {
-        food: 50_000,
-        transport: 20_000,
-        shopping: 20_000,
-        health: 10_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Sun",
-      total: 80_000,
-      breakdown: {
-        food: 30_000,
-        transport: 15_000,
-        shopping: 20_000,
-        health: 5_000,
-        other: 10_000,
-      },
-    },
-  ],
-  // Week 2: Feb 15–21
-  [
-    {
-      day: "Mon",
-      total: 180_000,
-      breakdown: {
-        food: 75_000,
-        transport: 40_000,
-        shopping: 35_000,
-        health: 15_000,
-        other: 15_000,
-      },
-    },
-    {
-      day: "Tue",
-      total: 290_000,
-      breakdown: {
-        food: 100_000,
-        transport: 60_000,
-        shopping: 80_000,
-        health: 30_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Wed",
-      total: 140_000,
-      breakdown: {
-        food: 55_000,
-        transport: 30_000,
-        shopping: 30_000,
-        health: 10_000,
-        other: 15_000,
-      },
-    },
-    {
-      day: "Thu",
-      total: 310_000,
-      breakdown: {
-        food: 120_000,
-        transport: 70_000,
-        shopping: 80_000,
-        health: 25_000,
-        other: 15_000,
-      },
-    },
-    {
-      day: "Fri",
-      total: 450_000,
-      breakdown: {
-        food: 160_000,
-        transport: 90_000,
-        shopping: 120_000,
-        health: 50_000,
-        other: 30_000,
-      },
-    },
-    {
-      day: "Sat",
-      total: 75_000,
-      breakdown: {
-        food: 30_000,
-        transport: 10_000,
-        shopping: 20_000,
-        health: 5_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Sun",
-      total: 95_000,
-      breakdown: {
-        food: 40_000,
-        transport: 20_000,
-        shopping: 15_000,
-        health: 10_000,
-        other: 10_000,
-      },
-    },
-  ],
-  // Week 3: Feb 22–28
-  [
-    {
-      day: "Mon",
-      total: 220_000,
-      breakdown: {
-        food: 90_000,
-        transport: 50_000,
-        shopping: 40_000,
-        health: 20_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Tue",
-      total: 170_000,
-      breakdown: {
-        food: 65_000,
-        transport: 35_000,
-        shopping: 40_000,
-        health: 15_000,
-        other: 15_000,
-      },
-    },
-    {
-      day: "Wed",
-      total: 260_000,
-      breakdown: {
-        food: 100_000,
-        transport: 55_000,
-        shopping: 65_000,
-        health: 20_000,
-        other: 20_000,
-      },
-    },
-    {
-      day: "Thu",
-      total: 195_000,
-      breakdown: {
-        food: 80_000,
-        transport: 40_000,
-        shopping: 45_000,
-        health: 15_000,
-        other: 15_000,
-      },
-    },
-    {
-      day: "Fri",
-      total: 380_000,
-      breakdown: {
-        food: 130_000,
-        transport: 75_000,
-        shopping: 100_000,
-        health: 45_000,
-        other: 30_000,
-      },
-    },
-    {
-      day: "Sat",
-      total: 120_000,
-      breakdown: {
-        food: 50_000,
-        transport: 25_000,
-        shopping: 25_000,
-        health: 10_000,
-        other: 10_000,
-      },
-    },
-    {
-      day: "Sun",
-      total: 70_000,
-      breakdown: {
-        food: 28_000,
-        transport: 12_000,
-        shopping: 15_000,
-        health: 5_000,
-        other: 10_000,
-      },
-    },
-  ],
-];
-
-const WEEK_LABELS = ["Feb 1–7", "Feb 8–14", "Feb 15–21", "Feb 22–28"];
-
-// ─── Mock annual data ─────────────────────────────────────────────────────────
-const ANNUAL_DATA: Record<number, MonthExpense[]> = {
-  2025: [
-    {
-      month: "Jan",
-      total: 1_800_000,
-      breakdown: {
-        food: 630_000,
-        transport: 450_000,
-        shopping: 360_000,
-        health: 216_000,
-        other: 144_000,
-      },
-    },
-    {
-      month: "Feb",
-      total: 1_500_000,
-      breakdown: {
-        food: 525_000,
-        transport: 375_000,
-        shopping: 300_000,
-        health: 180_000,
-        other: 120_000,
-      },
-    },
-    {
-      month: "Mar",
-      total: 2_100_000,
-      breakdown: {
-        food: 735_000,
-        transport: 525_000,
-        shopping: 420_000,
-        health: 252_000,
-        other: 168_000,
-      },
-    },
-    {
-      month: "Apr",
-      total: 1_650_000,
-      breakdown: {
-        food: 577_500,
-        transport: 412_500,
-        shopping: 330_000,
-        health: 198_000,
-        other: 132_000,
-      },
-    },
-    {
-      month: "May",
-      total: 1_950_000,
-      breakdown: {
-        food: 682_500,
-        transport: 487_500,
-        shopping: 390_000,
-        health: 234_000,
-        other: 156_000,
-      },
-    },
-    {
-      month: "Jun",
-      total: 2_400_000,
-      breakdown: {
-        food: 840_000,
-        transport: 600_000,
-        shopping: 480_000,
-        health: 288_000,
-        other: 192_000,
-      },
-    },
-    {
-      month: "Jul",
-      total: 2_200_000,
-      breakdown: {
-        food: 770_000,
-        transport: 550_000,
-        shopping: 440_000,
-        health: 264_000,
-        other: 176_000,
-      },
-    },
-    {
-      month: "Aug",
-      total: 1_750_000,
-      breakdown: {
-        food: 612_500,
-        transport: 437_500,
-        shopping: 350_000,
-        health: 210_000,
-        other: 140_000,
-      },
-    },
-    {
-      month: "Sep",
-      total: 1_600_000,
-      breakdown: {
-        food: 560_000,
-        transport: 400_000,
-        shopping: 320_000,
-        health: 192_000,
-        other: 128_000,
-      },
-    },
-    {
-      month: "Oct",
-      total: 1_900_000,
-      breakdown: {
-        food: 665_000,
-        transport: 475_000,
-        shopping: 380_000,
-        health: 228_000,
-        other: 152_000,
-      },
-    },
-    {
-      month: "Nov",
-      total: 2_050_000,
-      breakdown: {
-        food: 717_500,
-        transport: 512_500,
-        shopping: 410_000,
-        health: 246_000,
-        other: 164_000,
-      },
-    },
-    {
-      month: "Dec",
-      total: 2_800_000,
-      breakdown: {
-        food: 980_000,
-        transport: 700_000,
-        shopping: 560_000,
-        health: 336_000,
-        other: 224_000,
-      },
-    },
-  ],
-  2026: [
-    {
-      month: "Jan",
-      total: 1_560_000,
-      breakdown: {
-        food: 546_000,
-        transport: 390_000,
-        shopping: 312_000,
-        health: 187_200,
-        other: 124_800,
-      },
-    },
-    {
-      month: "Feb",
-      total: 1_500_000,
-      breakdown: {
-        food: 525_000,
-        transport: 375_000,
-        shopping: 300_000,
-        health: 180_000,
-        other: 120_000,
-      },
-    },
-    {
-      month: "Mar",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Apr",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "May",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Jun",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Jul",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Aug",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Sep",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Oct",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Nov",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-    {
-      month: "Dec",
-      total: 0,
-      breakdown: { food: 0, transport: 0, shopping: 0, health: 0, other: 0 },
-    },
-  ],
+type WeekData = {
+  label: string;
+  days: DayExpense[];
 };
 
-const YEAR_RANGE = [2025, 2026];
+const DAYS_OF_WEEK: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_MAP: Record<number, DayKey> = {
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
+  0: "Sun",
+};
+
+const MONTHS_OF_YEAR: MonthKey[] = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+const getWeekKey = (d: Date) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(date.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
+
+const formatWeekLabel = (monday: Date) => {
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const startMonth = MONTH_NAMES[monday.getMonth()];
+  const startDay = monday.getDate();
+
+  const endMonth = MONTH_NAMES[sunday.getMonth()];
+  const endDay = sunday.getDate();
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay}–${endDay}`;
+  } else {
+    return `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
+  }
+};
 
 // ─── Category definitions ─────────────────────────────────────────────────────
 type CatDef = { id: CatId; label: string; icon: string; color: string };
@@ -740,7 +273,6 @@ const CategoryRow = ({
           borderWidth: 1.5,
           borderColor: selected ? cat.color : "transparent",
           opacity: rowAnim,
-          // slide-in from right
         }}
       >
         <View
@@ -808,14 +340,74 @@ const CategoryRow = ({
   );
 };
 
+const mapCategoryToId = (category: any): CatId => {
+  if (!category) return "other";
+
+  const slug = (category.slug || "").toLowerCase();
+  const name = (category.name || "").toLowerCase();
+
+  if (
+    slug.includes("food") ||
+    slug.includes("beverage") ||
+    slug.includes("drink") ||
+    name.includes("food") ||
+    name.includes("drink") ||
+    name.includes("makan") ||
+    name.includes("minum")
+  ) {
+    return "food";
+  }
+
+  if (
+    slug.includes("transport") ||
+    slug.includes("car") ||
+    slug.includes("ride") ||
+    name.includes("transport") ||
+    name.includes("perjalanan") ||
+    name.includes("kendaraan")
+  ) {
+    return "transport";
+  }
+
+  if (
+    slug.includes("shop") ||
+    slug.includes("belanja") ||
+    slug.includes("market") ||
+    name.includes("shop") ||
+    name.includes("belanja") ||
+    name.includes("beli")
+  ) {
+    return "shopping";
+  }
+
+  if (
+    slug.includes("health") ||
+    slug.includes("fit") ||
+    slug.includes("medic") ||
+    slug.includes("doctor") ||
+    name.includes("health") ||
+    name.includes("sehat") ||
+    name.includes("obat") ||
+    name.includes("dokter")
+  ) {
+    return "health";
+  }
+
+  return "other";
+};
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function Analytics() {
   const insets = useSafeAreaInsets();
 
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   // ── View mode ──────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<"weekly" | "annual">("weekly");
-  const [weekIdx, setWeekIdx] = useState(0); // 0-3
-  const [year, setYear] = useState(2026);
+  const [weekIdx, setWeekIdx] = useState(0);
+  const [year, setYear] = useState(new Date().getFullYear());
 
   // ── Selection state ────────────────────────────────────────────────────────
   const [selectedBar, setSelectedBar] = useState<string | null>(null); // day or month label
@@ -827,6 +419,42 @@ export default function Analytics() {
   const cardAnim = useRef(new Animated.Value(0)).current;
   const pieAnim = useRef(new Animated.Value(0)).current;
   const catAnims = useRef(CATS.map(() => new Animated.Value(0))).current;
+
+  const resolveCategory = (catIdOrObj: any) => {
+    if (!catIdOrObj) return null;
+    if (typeof catIdOrObj === "object") return catIdOrObj;
+    return categories.find((c) => (c._id || c.id) === catIdOrObj) || null;
+  };
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const [txRes, catsRes] = await Promise.all([
+        apiRequest("/transaction", { method: "GET" }),
+        apiRequest("/categories", { method: "GET" }),
+      ]);
+
+      if (catsRes?.status === "success" && catsRes.data) {
+        setCategories(catsRes.data);
+      } else if (Array.isArray(catsRes)) {
+        setCategories(catsRes);
+      }
+
+      if (txRes?.status === "success" && txRes.data) {
+        setTransactions(txRes.data);
+      } else if (Array.isArray(txRes)) {
+        setTransactions(txRes);
+      }
+    } catch (err) {
+      console.error("Failed to fetch analytics data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
 
   const runAnims = () => {
     cardAnim.setValue(0);
@@ -859,14 +487,163 @@ export default function Analytics() {
   };
 
   useEffect(() => {
-    Animated.timing(headerAnim, {
-      toValue: 1,
-      duration: 550,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-    runAnims();
-  }, []);
+    if (!loading) {
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 550,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      runAnims();
+    }
+  }, [loading]);
+
+  // Generate weeks dynamically from transactions
+  const dynamicWeeks = useMemo(() => {
+    const expenses = transactions.filter((t) => t.type === "expense");
+
+    // Default to last 4 weeks if no transactions
+    if (expenses.length === 0) {
+      const weeks: WeekData[] = [];
+      const now = new Date();
+      let monday = getWeekKey(now);
+      monday.setDate(monday.getDate() - 21);
+      for (let i = 0; i < 4; i++) {
+        const label = formatWeekLabel(monday);
+        const days: DayExpense[] = DAYS_OF_WEEK.map((d) => ({
+          day: d,
+          total: 0,
+          breakdown: zeroBreakdown(),
+        }));
+        weeks.push({ label, days });
+        monday = new Date(monday);
+        monday.setDate(monday.getDate() + 7);
+      }
+      return weeks;
+    }
+
+    let minDate = new Date();
+    let maxDate = new Date();
+    expenses.forEach((tx, idx) => {
+      const d = new Date(tx.date);
+      if (idx === 0) {
+        minDate = d;
+        maxDate = d;
+      } else {
+        if (d < minDate) minDate = d;
+        if (d > maxDate) maxDate = d;
+      }
+    });
+
+    const startMon = getWeekKey(minDate);
+    const endMon = getWeekKey(maxDate);
+
+    const weeksMap: Record<string, WeekData> = {};
+    let currentMon = new Date(startMon);
+
+    while (currentMon <= endMon) {
+      const keyStr = currentMon.toISOString().split("T")[0];
+      const label = formatWeekLabel(currentMon);
+      const days: DayExpense[] = DAYS_OF_WEEK.map((d) => ({
+        day: d,
+        total: 0,
+        breakdown: zeroBreakdown(),
+      }));
+      weeksMap[keyStr] = { label, days };
+
+      currentMon.setDate(currentMon.getDate() + 7);
+    }
+
+    expenses.forEach((tx) => {
+      const txDate = new Date(tx.date);
+      const mon = getWeekKey(txDate);
+      const keyStr = mon.toISOString().split("T")[0];
+      const week = weeksMap[keyStr];
+      if (week) {
+        const dayIdx = txDate.getDay();
+        const dayKey = DAY_MAP[dayIdx];
+        const dayObj = week.days.find((d) => d.day === dayKey);
+        if (dayObj) {
+          const amt = Number(tx.amount) || 0;
+          dayObj.total += amt;
+
+          const catObj = resolveCategory(tx.category_id);
+          const catId = mapCategoryToId(catObj);
+
+          dayObj.breakdown[catId] += amt;
+        }
+      }
+    });
+
+    return Object.entries(weeksMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([_, val]) => val);
+  }, [transactions, categories]);
+
+  // Group annual data dynamically from transactions
+  const annualData = useMemo(() => {
+    const expenses = transactions.filter((t) => t.type === "expense");
+    const years = new Set<number>();
+    expenses.forEach((tx) => {
+      const yearVal = new Date(tx.date).getFullYear();
+      if (!isNaN(yearVal)) {
+        years.add(yearVal);
+      }
+    });
+
+    if (years.size === 0) {
+      years.add(new Date().getFullYear());
+    }
+
+    const yearRange = Array.from(years).sort((a, b) => a - b);
+
+    const dataMap: Record<number, MonthExpense[]> = {};
+    yearRange.forEach((yr) => {
+      dataMap[yr] = MONTHS_OF_YEAR.map((m) => ({
+        month: m,
+        total: 0,
+        breakdown: zeroBreakdown(),
+      }));
+    });
+
+    expenses.forEach((tx) => {
+      const date = new Date(tx.date);
+      const yr = date.getFullYear();
+      const monthIdx = date.getMonth();
+      const monthKey = MONTHS_OF_YEAR[monthIdx];
+      const yearMonths = dataMap[yr];
+      if (yearMonths) {
+        const monthObj = yearMonths.find((m) => m.month === monthKey);
+        if (monthObj) {
+          const amt = Number(tx.amount) || 0;
+          monthObj.total += amt;
+
+          const catObj = resolveCategory(tx.category_id);
+          const catId = mapCategoryToId(catObj);
+
+          monthObj.breakdown[catId] += amt;
+        }
+      }
+    });
+
+    return {
+      years: yearRange,
+      data: dataMap,
+    };
+  }, [transactions, categories]);
+
+  // Sync index hooks to use latest datasets by default
+  useEffect(() => {
+    if (dynamicWeeks.length > 0) {
+      setWeekIdx(dynamicWeeks.length - 1);
+    }
+  }, [dynamicWeeks.length]);
+
+  useEffect(() => {
+    if (annualData.years.length > 0) {
+      setYear(annualData.years[annualData.years.length - 1]);
+    }
+  }, [annualData.years]);
 
   const triggerRefresh = () => {
     setAnimKey((k) => k + 1);
@@ -882,7 +659,7 @@ export default function Analytics() {
 
   const handleWeekNav = (dir: 1 | -1) => {
     const next = weekIdx + dir;
-    if (next < 0 || next >= ALL_WEEKS.length) return;
+    if (next < 0 || next >= dynamicWeeks.length) return;
     setWeekIdx(next);
     setSelectedCat(null);
     triggerRefresh();
@@ -890,16 +667,13 @@ export default function Analytics() {
 
   const handleYearNav = (dir: 1 | -1) => {
     const next = year + dir;
-    if (!YEAR_RANGE.includes(next)) return;
+    if (!annualData.years.includes(next)) return;
     setYear(next);
     setSelectedCat(null);
     triggerRefresh();
   };
 
   const handleBarPress = (label: string) => {
-    // Intentionally NOT calling triggerRefresh — bar selection must never
-    // remount the BarChart (which would restart the grow animation).
-    // We only update selectedBar so frontColor/opacity recalculates in-place.
     setSelectedBar((prev) => (prev === label ? null : label));
     setSelectedCat(null);
   };
@@ -909,11 +683,10 @@ export default function Analytics() {
     setSelectedBar(null);
   };
 
-  // ── Derived data ──────────────────────────────────────────────────────────
-  const weekRows = ALL_WEEKS[weekIdx];
-  const annualRows = ANNUAL_DATA[year] ?? ANNUAL_DATA[2025];
+  // ── Derived active datasets ───────────────────────────────────────────────
+  const weekRows = dynamicWeeks[weekIdx]?.days || [];
+  const annualRows = annualData.data[year] || [];
 
-  // The "active" breakdown source — either selected bar OR all bars summed
   const getBreakdown = (): Record<CatId, number> => {
     if (mode === "weekly") {
       if (selectedBar) {
@@ -932,7 +705,6 @@ export default function Analytics() {
 
   const breakdown = getBreakdown();
 
-  // If a category is selected, filter total to show only that category
   const displayBreakdown: Record<CatId, number> = selectedCat
     ? (Object.fromEntries(
         CATS.map((c) => [c.id, c.id === selectedCat ? breakdown[c.id] : 0]),
@@ -944,11 +716,8 @@ export default function Analytics() {
     0,
   );
 
-  // Build bar chart data
-  // When a bar is selected: that bar → full active color, others → faded (30% alpha)
-  // When a category is selected: all bars use that category's color (faded/full based on selectedBar)
   const activeColor = selectedCat ? CAT_COLORS[selectedCat] : GREEN;
-  const dimmedColor = activeColor + "38"; // ~22% opacity hex suffix
+  const dimmedColor = activeColor + "38";
 
   const barData =
     mode === "weekly"
@@ -963,7 +732,7 @@ export default function Analytics() {
             labelTextStyle: {
               color: hasSel ? (isSel ? "#1a1f36" : "#c0c8d0") : "#9ca3af",
               fontSize: 9,
-              fontWeight: isSel ? "700" : "400",
+              fontWeight: (isSel ? "700" : "400") as any,
             },
             frontColor: hasSel
               ? isSel
@@ -1004,7 +773,7 @@ export default function Analytics() {
             labelTextStyle: {
               color: hasSel ? (isSel ? "#1a1f36" : "#c0c8d0") : "#9ca3af",
               fontSize: 8,
-              fontWeight: isSel ? "700" : "400",
+              fontWeight: (isSel ? "700" : "400") as any,
             },
             frontColor: hasSel
               ? isSel
@@ -1040,23 +809,94 @@ export default function Analytics() {
     value: displayBreakdown[c.id],
     color: displayBreakdown[c.id] === 0 ? "#e5e7eb" : c.color,
     focused: selectedCat === c.id,
+    catId: c.id,
   })).filter((d) => d.value > 0 || selectedCat === null);
 
-  // Navigation label
-  const navLabel = mode === "weekly" ? WEEK_LABELS[weekIdx] : String(year);
+  const navLabel =
+    mode === "weekly" ? dynamicWeeks[weekIdx]?.label || "" : String(year);
   const canPrev =
-    mode === "weekly" ? weekIdx > 0 : YEAR_RANGE.indexOf(year) > 0;
+    mode === "weekly" ? weekIdx > 0 : annualData.years.indexOf(year) > 0;
   const canNext =
     mode === "weekly"
-      ? weekIdx < ALL_WEEKS.length - 1
-      : YEAR_RANGE.indexOf(year) < YEAR_RANGE.length - 1;
+      ? weekIdx < dynamicWeeks.length - 1
+      : annualData.years.indexOf(year) < annualData.years.length - 1;
 
-  // Active filter chip label
   const filterLabel = selectedBar
     ? `${mode === "weekly" ? selectedBar : selectedBar} only`
     : selectedCat
       ? `${CATS.find((c) => c.id === selectedCat)?.label} only`
       : null;
+
+  if (loading) {
+    return (
+      <>
+        <StatusBar barStyle="light-content" />
+        <ScrollView style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
+          {/* Header */}
+          <LinearGradient
+            colors={["#00bf71", "#009e5f"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingTop: insets.top + 18,
+              paddingBottom: 40,
+              paddingHorizontal: 22,
+            }}
+          >
+            <View
+              style={{
+                height: 36,
+                width: 140,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                borderRadius: 8,
+              }}
+            />
+            <View
+              style={{
+                height: 16,
+                width: 100,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderRadius: 6,
+                marginTop: 8,
+              }}
+            />
+          </LinearGradient>
+
+          {/* Cards skeleton */}
+          <View style={{ paddingHorizontal: 16, marginTop: -22, gap: 14 }}>
+            <View style={$card}>
+              <View
+                style={{
+                  height: 32,
+                  width: 180,
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                }}
+              />
+              <View
+                style={{
+                  height: 60,
+                  width: "100%",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  marginBottom: 16,
+                }}
+              />
+              <View
+                style={{
+                  height: 160,
+                  width: "100%",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 8,
+                }}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </>
+    );
+  }
 
   return (
     <>
@@ -1362,9 +1202,10 @@ export default function Analytics() {
                 innerCircleColor="white"
                 focusOnPress
                 toggleFocusOnPress
-                onPress={(item: any, index: number) => {
-                  const cat = CATS[index];
-                  if (cat) handleCatPress(cat.id);
+                onPress={(item: any) => {
+                  if (item && item.catId) {
+                    handleCatPress(item.catId);
+                  }
                 }}
                 centerLabelComponent={() => (
                   <View style={{ alignItems: "center", paddingHorizontal: 8 }}>
@@ -1506,10 +1347,10 @@ export default function Analytics() {
                 {selectedCat
                   ? `You spent ${rp(breakdown[selectedCat])} on ${CATS.find((c) => c.id === selectedCat)?.label}${selectedBar ? ` on ${selectedBar}` : ` this ${mode === "weekly" ? "week" : "year"}`}.`
                   : selectedBar
-                    ? `Total expense on ${selectedBar}: ${rp(Object.values(breakdown).reduce((s, v) => s + v, 0))}. Food & Drink is the top category.`
+                    ? `Total expense on ${selectedBar}: ${rp(Object.values(breakdown).reduce((s, v) => s + v, 0))}.`
                     : mode === "weekly"
-                      ? `Your highest spend day is Friday. Food & Drink takes the largest share.`
-                      : `December is your highest spending month. Plan ahead for year-end expenses.`}
+                      ? `Your expenses are grouped by week. Tap a category or a daily bar to get smart stats.`
+                      : `Your expenses are grouped by month. Tap a category or a monthly bar to get smart stats.`}
               </Text>
             </View>
           </Animated.View>
