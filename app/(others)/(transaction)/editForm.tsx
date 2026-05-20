@@ -9,11 +9,10 @@ import CategoryBottomSheet from "@/components/Form/CategoryBottomSheet";
 import CurrencyBottomSheet from "@/components/Form/CurrencyBottomSheet";
 import WalletBottomSheet from "@/components/Form/WalletBottomSheet";
 import { CURRENCY_LIST } from "@/constants/currencyList";
-import { WALLET_LIST } from "@/constants/walletList";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { CalendarDays, ChevronDown, Trash2 } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Modal,
   Pressable,
@@ -22,9 +21,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { apiRequest } from "@/utils/api";
 
 // ─── Dummy pre-filled data ────────────────────────────────────────────────────
 const DUMMY_TRANSACTION = {
@@ -144,30 +147,28 @@ const DeleteModal = ({
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function EditTransaction() {
   const router = useRouter();
+  const { id: transactionId } = useLocalSearchParams<{ id?: string }>();
   const insets = useSafeAreaInsets();
 
-  // ── Form state — pre-filled from dummy data ────────────────────────────────
-  const [transactionType, setTransactionType] = useState<"expense" | "income">(
-    DUMMY_TRANSACTION.transactionType,
-  );
-  const [amount, setAmount] = useState(DUMMY_TRANSACTION.amount);
-  const [name, setName] = useState(DUMMY_TRANSACTION.name);
-  const [description, setDescription] = useState(DUMMY_TRANSACTION.description);
-  const [date, setDate] = useState(DUMMY_TRANSACTION.date);
+  // ── Form state — initial values set dynamically ───────────────────────────
+  const [transactionType, setTransactionType] = useState<"expense" | "income">("expense");
+  const [amount, setAmount] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const [categories, setCategories] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const [selectedCurrency, setSelectedCurrency] = useState(
-    CURRENCY_LIST.find((c) => c.code === DUMMY_TRANSACTION.currencyCode) ??
-      CURRENCY_LIST[0],
+    CURRENCY_LIST.find((c) => c.code === "IDR") ?? CURRENCY_LIST[0],
   );
-  const [selectedWallet, setSelectedWallet] = useState(
-    WALLET_LIST.find((w) => w.id === DUMMY_TRANSACTION.walletId) ??
-      WALLET_LIST[0],
-  );
-  const [selectedCategory, setSelectedCategory] = useState(
-    DUMMY_TRANSACTION.categoryId,
-  );
+  const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const formatDate = (d: Date) =>
@@ -177,10 +178,90 @@ export default function EditTransaction() {
       year: "numeric",
     });
 
+  const formatDateForApi = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatCurrencyInput = (text: string) => {
+    const cleanNumber = text.replace(/[^0-9]/g, ""); // Hapus karakter non-angka
+    return cleanNumber.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Tambahkan titik setiap kelipatan 3 digit
+  };
+
   const handleConfirmDate = (selected: Date) => {
     setDate(selected);
     setShowDatePicker(false);
   };
+
+  // Fetching Data dari API untuk Dropdown/BottomSheet dan Transaction Details
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const categoriesRes = await apiRequest("/categories", { method: "GET" });
+        const walletsRes = await apiRequest("/wallets", { method: "GET" });
+
+        let loadedCategories: any[] = [];
+        let loadedWallets: any[] = [];
+
+        if (categoriesRes?.status === "success") {
+          loadedCategories = categoriesRes.data;
+          setCategories(loadedCategories);
+        }
+
+        if (walletsRes?.status === "success") {
+          loadedWallets = walletsRes.data;
+          setWallets(loadedWallets);
+        }
+
+        if (transactionId) {
+          const transactionRes = await apiRequest(`/transaction/${transactionId}`, { method: "GET" });
+          if (transactionRes?.status === "success" || transactionRes) {
+            const tx = transactionRes.data || transactionRes;
+
+            setTransactionType(tx.type || "expense");
+            if (tx.amount) {
+              setAmount(formatCurrencyInput(tx.amount.toString()));
+            }
+            setName(tx.name || "");
+            setDescription(tx.description || "");
+            if (tx.date) {
+              setDate(new Date(tx.date));
+            }
+
+            // Find matching category object
+            const catId = tx.category_id?._id || tx.category_id;
+            const matchedCategory = loadedCategories.find(c => (c._id || c.id) === catId);
+            if (matchedCategory) {
+              setSelectedCategory(matchedCategory);
+            }
+
+            // Find matching wallet object
+            const wId = tx.wallet_id?._id || tx.wallet_id;
+            const matchedWallet = loadedWallets.find(w => (w._id || w.id) === wId);
+            if (matchedWallet) {
+              setSelectedWallet(matchedWallet);
+            }
+
+            if (tx.currency_id) {
+              const currCode = tx.currency_id.code || "IDR";
+              const matchedCurr = CURRENCY_LIST.find(c => c.code === currCode);
+              if (matchedCurr) setSelectedCurrency(matchedCurr);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Gagal memuat data transaksi:", error);
+        Alert.alert("Error", "Gagal memuat data transaksi.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [transactionId]);
 
   // ── Bottom sheet refs ──────────────────────────────────────────────────────
   const currencyBottomSheet = useRef<BottomSheet>(null);
@@ -202,16 +283,86 @@ export default function EditTransaction() {
     setSelectedWallet(wallet);
     closeWalletSheet();
   };
-  const handleSelectCategory = (categoryId: string) => {
-    setSelectedCategory(categoryId);
+  const handleSelectCategory = (category: any) => {
+    setSelectedCategory(category);
     closeCategorySheet();
   };
 
-  const handleDelete = () => {
-    setShowDeleteModal(false);
-    // TODO: call delete API, then navigate back
-    router.back();
+  const handleSave = async () => {
+    const cleanAmountString = amount.replace(/\./g, "");
+    const parsedAmount = parseFloat(cleanAmountString);
+
+    if (!name.trim()) {
+      Alert.alert("Error", "Nama transaksi tidak boleh kosong");
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert("Error", "Silakan pilih kategori terlebih dahulu");
+      return;
+    }
+    if (!selectedWallet) {
+      Alert.alert("Error", "Silakan pilih wallet terlebih dahulu");
+      return;
+    }
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert("Error", "Jumlah nominal harus lebih dari 0");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const payload = {
+        category_id: selectedCategory._id || selectedCategory.id,
+        wallet_id: selectedWallet._id || selectedWallet.id,
+        amount: cleanAmountString,
+        type: transactionType,
+        name: name,
+        description: description,
+        date: formatDateForApi(date),
+        input_method: "manual"
+      };
+
+      const response = await apiRequest(`/transaction/${transactionId}`, {
+        method: "PUT",
+        body: payload,
+      });
+
+      if (response?.status === "success" || response) {
+        Alert.alert("Sukses", "Transaksi berhasil diperbarui!");
+        router.back();
+      }
+    } catch (error: any) {
+      Alert.alert("Gagal", error.message || "Gagal memperbarui transaksi");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleDelete = async () => {
+    setShowDeleteModal(false);
+    try {
+      setSubmitting(true);
+      const response = await apiRequest(`/transaction/${transactionId}`, {
+        method: "DELETE",
+      });
+      if (response) {
+        Alert.alert("Sukses", "Transaksi berhasil dihapus!");
+        router.back();
+      }
+    } catch (error: any) {
+      Alert.alert("Gagal", error.message || "Gagal menghapus transaksi");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -286,7 +437,7 @@ export default function EditTransaction() {
               className="text-4xl font-bold text-black"
               keyboardType="numeric"
               value={amount}
-              onChangeText={setAmount}
+              onChangeText={(text) => setAmount(formatCurrencyInput(text))}
               placeholder="0.00"
             />
           </View>
@@ -399,15 +550,11 @@ export default function EditTransaction() {
                 className="border border-gray-300 rounded-lg px-4 py-3 flex-row justify-between items-center"
               >
                 <Text
-                  style={{
-                    color: selectedCategory ? "#1a1f36" : "#9CA3AF",
-                    fontSize: 14,
-                  }}
+                  className={selectedCategory ? "text-black" : "text-[#9CA3AF]"}
+                  style={{ fontSize: 14 }}
                 >
                   {selectedCategory
-                    ? selectedCategory
-                        .replace("_", " ")
-                        .replace(/\b\w/g, (c) => c.toUpperCase())
+                    ? `${selectedCategory.emoticon} ${selectedCategory.name}`
                     : "Pilih Kategori"}
                 </Text>
                 <ChevronDown size={18} />
@@ -421,8 +568,11 @@ export default function EditTransaction() {
                 onPress={openWalletSheet}
                 className="border border-gray-300 rounded-lg px-4 py-3 flex-row justify-between items-center"
               >
-                <Text style={{ color: "#1a1f36", fontSize: 14 }}>
-                  {selectedWallet.bank}
+                <Text
+                  className={selectedWallet ? "text-black" : "text-[#9CA3AF]"}
+                  style={{ fontSize: 14 }}
+                >
+                  {selectedWallet ? selectedWallet.name : "Pilih Wallet"}
                 </Text>
                 <ChevronDown size={18} />
               </Pressable>
@@ -432,13 +582,20 @@ export default function EditTransaction() {
 
         {/* ── Save Button ───────────────────────────────────────────────── */}
         <Pressable
+          onPress={handleSave}
+          disabled={submitting}
           style={{ marginBottom: insets.bottom + 16 }}
-          className="self-center w-full py-3 bg-[#00bf71] rounded-[20px] items-center justify-center active:opacity-80"
-          onPress={() => router.back()}
+          className={`self-center w-full py-3 rounded-[20px] items-center justify-center active:opacity-80 ${
+            submitting ? "bg-emerald-300" : "bg-[#00bf71]"
+          }`}
         >
-          <Text className="text-white text-lg font-semibold">
-            Simpan Perubahan
-          </Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text className="text-white text-lg font-semibold">
+              Simpan Perubahan
+            </Text>
+          )}
         </Pressable>
       </View>
 
@@ -450,11 +607,13 @@ export default function EditTransaction() {
       />
       <CategoryBottomSheet
         ref={categoryBottomSheet}
+        categories={categories}
         selectedCategory={selectedCategory}
         onSelect={handleSelectCategory}
       />
       <WalletBottomSheet
         ref={walletBottomSheet}
+        wallets={wallets}
         selectedWallet={selectedWallet}
         onSelect={handleSelectWallet}
       />

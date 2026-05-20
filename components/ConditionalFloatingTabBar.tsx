@@ -13,6 +13,7 @@ const HIDDEN_ON_ROUTES = new Set([
   "participantBills",
   "addForm",
   "transferForm",
+  "editForm",
 ]);
 
 export const shouldShowOthersTabBar = (segments: string[]) => {

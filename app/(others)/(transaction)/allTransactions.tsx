@@ -570,7 +570,12 @@ export default function AllTransactions() {
               <TransactionRow
                 item={item}
                 wallets={wallets}
-                onPress={() => router.push("/(others)/(transaction)/editForm")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(others)/(transaction)/editForm",
+                    params: { id: item._id },
+                  })
+                }
               />
             </View>
           )}
