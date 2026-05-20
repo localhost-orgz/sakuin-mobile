@@ -10,9 +10,9 @@ import { TOP_SPENDING_CATEGORIES } from "@/constants/topCatList";
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
 import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, Filter, Search, X } from "lucide-react-native";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   FlatList,
   Pressable,
@@ -241,9 +241,11 @@ export default function AllTransactions() {
     }
   };
 
-  useEffect(() => {
-    fetchTransactionsData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactionsData();
+    }, [])
+  );
 
   const filterChips = useMemo(() => {
     const list = [{ id: "all", label: "All" }];

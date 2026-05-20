@@ -10,6 +10,7 @@
  * Theme picker is now fully dynamic via useWalletTheme (same as AddGoal.tsx).
  */
 
+import { Skeleton } from "@/components/Skeleton";
 import { MONEY_TRACKER_EMOJIS } from "@/constants/emojiList";
 import {
   WalletTheme,
@@ -17,6 +18,7 @@ import {
   getWalletTheme,
   getWalletThemeIds,
 } from "@/hooks/useWalletTheme";
+import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
@@ -30,8 +32,6 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { apiRequest } from "@/utils/api";
-import { Skeleton } from "@/components/Skeleton";
 import {
   Alert,
   Animated,
@@ -57,22 +57,11 @@ const { width } = Dimensions.get("window");
 // ─── Category type ────────────────────────────────────────────────────────────
 type Category = {
   id: string;
+  slug?: string;
   icon: string;
   label: string;
   themeId: WalletThemeId;
 };
-
-// ─── Initial category list ────────────────────────────────────────────────────
-const INITIAL_CATEGORIES: Category[] = [
-  { id: "1", icon: "🍔", label: "Food & Beverage", themeId: "forest" },
-  { id: "2", icon: "🎮", label: "Gaming", themeId: "violet" },
-  { id: "3", icon: "🚕", label: "Transport", themeId: "ocean" },
-  { id: "4", icon: "🛍️", label: "Shopping", themeId: "rose" },
-  { id: "5", icon: "💊", label: "Health & Fitness", themeId: "forest" },
-  { id: "6", icon: "▶️", label: "Entertainment", themeId: "indigo" },
-  { id: "7", icon: "🧾", label: "Bills & Utilities", themeId: "ember" },
-  { id: "8", icon: "📚", label: "Education", themeId: "violet" },
-];
 
 // ─── ThemeCircle — now driven by WalletTheme ─────────────────────────────────
 const ThemeCircle = ({
@@ -224,7 +213,7 @@ const CategorySheet = ({
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const onShow = (e: KeyboardEvent) =>
       Animated.timing(keyboardOffset, {
-        toValue: e.endCoordinates.height,
+        toValue: Platform.OS === "ios" ? e.endCoordinates.height : 0,
         duration: Platform.OS === "ios" ? e.duration || 250 : 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
@@ -917,17 +906,19 @@ export default function ManageCategory() {
       if (res?.status === "success" && res.data) {
         const mapped = res.data.map((c: any) => ({
           id: c._id || c.id,
+          slug: c.slug || c._id || c.id,
           icon: c.emoticon || c.icon || "🏷️",
           label: c.name || c.label || "Unnamed",
-          themeId: (c.themeId || c.theme_id || "ocean") as WalletThemeId,
+          themeId: (c.color || c.themeId || c.theme_id || "ocean") as WalletThemeId,
         }));
         setCategories(mapped);
       } else if (Array.isArray(res)) {
         const mapped = res.map((c: any) => ({
           id: c._id || c.id,
+          slug: c.slug || c._id || c.id,
           icon: c.emoticon || c.icon || "🏷️",
           label: c.name || c.label || "Unnamed",
-          themeId: (c.themeId || c.theme_id || "ocean") as WalletThemeId,
+          themeId: (c.color || c.themeId || c.theme_id || "ocean") as WalletThemeId,
         }));
         setCategories(mapped);
       }
@@ -968,24 +959,26 @@ export default function ManageCategory() {
     try {
       setSheetVisible(false);
       setLoading(true);
+      const catKey = editingCategory?.slug || editingCategory?.id;
+
       if (sheetMode === "add") {
         await apiRequest("/categories", {
           method: "POST",
           body: {
             name: data.name,
             emoticon: data.icon,
-            themeId: data.themeId,
+            color: data.themeId,
           },
         });
-      } else if (editingCategory) {
+      } else if (editingCategory && catKey) {
         let updateSuccess = false;
         try {
-          await apiRequest(`/categories/${editingCategory.id}`, {
+          await apiRequest(`/categories/${catKey}`, {
             method: "PUT",
             body: {
               name: data.name,
               emoticon: data.icon,
-              themeId: data.themeId,
+              color: data.themeId,
             },
           });
           updateSuccess = true;
@@ -994,12 +987,12 @@ export default function ManageCategory() {
         }
 
         if (!updateSuccess) {
-          await apiRequest(`/categories/${editingCategory.id}`, {
+          await apiRequest(`/categories/${catKey}`, {
             method: "PATCH",
             body: {
               name: data.name,
               emoticon: data.icon,
-              themeId: data.themeId,
+              color: data.themeId,
             },
           });
         }
@@ -1017,7 +1010,8 @@ export default function ManageCategory() {
       try {
         setSheetVisible(false);
         setLoading(true);
-        await apiRequest(`/categories/${editingCategory.id}`, {
+        const catKey = editingCategory.slug || editingCategory.id;
+        await apiRequest(`/categories/${catKey}`, {
           method: "DELETE",
         });
         await fetchCategories();

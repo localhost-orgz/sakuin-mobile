@@ -20,7 +20,7 @@ import {
   X,
   Check,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -37,6 +37,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
+  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -223,6 +226,48 @@ export default function DetailWallet() {
   const [editName, setEditName] = useState("");
   const [editThemeId, setEditThemeId] = useState<WalletThemeId>("ocean");
 
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(600)).current;
+
+  useEffect(() => {
+    if (sheetVisible) {
+      slideAnim.setValue(600);
+      backdropOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [sheetVisible]);
+
+  const closeSheet = useCallback(() => {
+    Keyboard.dismiss();
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 600,
+        duration: 240,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setSheetVisible(false);
+    });
+  }, [backdropOpacity, slideAnim]);
+
   // Fetch data dari API
   const fetchWalletDetail = useCallback(async () => {
     try {
@@ -268,7 +313,7 @@ export default function DetailWallet() {
       });
 
       if (response && response.status === "success") {
-        setSheetVisible(false);
+        closeSheet();
         fetchWalletDetail();
         Alert.alert("Sukses", "Informasi dompet berhasil diperbarui.");
       } else {
@@ -294,7 +339,7 @@ export default function DetailWallet() {
           onPress: async () => {
             try {
               setLoading(true);
-              setSheetVisible(false);
+              closeSheet();
               const response = await apiRequest(`/wallets/${walletId}`, {
                 method: "DELETE",
               });
@@ -681,32 +726,50 @@ export default function DetailWallet() {
         <Modal
           visible={sheetVisible}
           transparent
-          animationType="slide"
-          onRequestClose={() => setSheetVisible(false)}
+          animationType="none"
+          onRequestClose={closeSheet}
           statusBarTranslucent
         >
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1 }}
           >
-            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,23,42,0.4)" }}>
-              <Pressable style={StyleSheet.absoluteFill} onPress={() => setSheetVisible(false)} />
-            
-            <View
-              style={{
-                backgroundColor: "white",
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: insets.bottom + 20,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: -10 },
-                shadowOpacity: 0.1,
-                shadowRadius: 10,
-                elevation: 25,
-              }}
-            >
+            <View style={{ flex: 1, justifyContent: "flex-end" }}>
+              {/* Backdrop */}
+              <Animated.View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: "rgba(15,23,42,0.6)",
+                    opacity: backdropOpacity,
+                  }
+                ]}
+              >
+                <Pressable style={{ flex: 1 }} onPress={closeSheet} />
+              </Animated.View>
+
+              {/* Sheet container */}
+              <Animated.View
+                style={{
+                  transform: [{ translateY: slideAnim }],
+                  width: "100%",
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderTopLeftRadius: 28,
+                    borderTopRightRadius: 28,
+                    paddingHorizontal: 24,
+                    paddingTop: 16,
+                    paddingBottom: insets.bottom + 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: -10 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 10,
+                    elevation: 25,
+                  }}
+                >
               {/* Drag Handle */}
               <View
                 style={{
@@ -806,7 +869,7 @@ export default function DetailWallet() {
 
                   {/* Button: Cancel */}
                   <TouchableOpacity
-                    onPress={() => setSheetVisible(false)}
+                    onPress={closeSheet}
                     style={{
                       width: "100%",
                       height: 48,
@@ -972,8 +1035,9 @@ export default function DetailWallet() {
                   </View>
                 </View>
               )}
+                </View>
+              </Animated.View>
             </View>
-          </View>
           </KeyboardAvoidingView>
         </Modal>
       </View>

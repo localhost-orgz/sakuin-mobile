@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
 
 const BASE_URL = "https://sakuin-be.vercel.app"; 
 
@@ -28,9 +29,19 @@ export async function apiRequest(endpoint: string, {
 
    try {
       const res = await fetch(url, options);
-      const data = await res.json();
+      
+      let data;
+      try {
+         data = await res.json();
+      } catch (jsonErr) {
+         data = {};
+      }
 
       if (!res.ok) {
+         if (res.status === 401) {
+            await SecureStore.deleteItemAsync("user_token");
+            router.replace("/(auth)/welcome");
+         }
          throw new Error(data.message || "Request failed");
       }
 

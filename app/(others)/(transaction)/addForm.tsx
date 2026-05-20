@@ -53,6 +53,7 @@ export default function AddTransaction() {
         setLoading(true);
         const categoriesRes = await apiRequest("/categories", { method: "GET" });
         const walletsRes = await apiRequest("/wallets", { method: "GET" });
+        const profileRes = await apiRequest("/auth/profile", { method: "GET" });
 
         if (categoriesRes?.status === "success") {
           setCategories(categoriesRes.data);
@@ -71,8 +72,17 @@ export default function AddTransaction() {
             setSelectedWallet(preselectedWallet || walletsRes.data[0]);
           }
         }
+
+        if (profileRes?.status === "success" && profileRes.data?.default_currency) {
+          const userCurrency = profileRes.data.default_currency;
+          const code = typeof userCurrency === "string" ? userCurrency : userCurrency.code;
+          const matched = CURRENCY_LIST.find((c) => c.code === code);
+          if (matched) {
+            setSelectedCurrency(matched);
+          }
+        }
       } catch (error) {
-        console.error("Gagal memuat data kategori atau wallet:", error);
+        console.error("Gagal memuat data kategori, wallet, atau profil:", error);
       } finally {
         setLoading(false);
       }

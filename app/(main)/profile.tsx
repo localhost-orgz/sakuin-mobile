@@ -25,9 +25,19 @@ export default function ProfileScreen() {
   const openCurrencySheet = () => currencyBottomSheet.current?.expand();
   const closeCurrencySheet = () => currencyBottomSheet.current?.close();
 
-  const handleSelectCurrency = (currency: (typeof CURRENCY_LIST)[0]) => {
+  const handleSelectCurrency = async (currency: (typeof CURRENCY_LIST)[0]) => {
     setSelectedCurrency(currency);
     closeCurrencySheet();
+    try {
+      await apiRequest("/auth/profile", {
+        method: "PUT",
+        body: {
+          default_currency: currency.code,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to update default currency:", err);
+    }
   };
 
   const fetchUser = async () => {
@@ -39,6 +49,15 @@ export default function ProfileScreen() {
 
       if (res.status === "success" && res.data) {
         setUser(res.data);
+        if (res.data.default_currency) {
+          const code = typeof res.data.default_currency === "string"
+            ? res.data.default_currency
+            : res.data.default_currency.code;
+          const matched = CURRENCY_LIST.find((c) => c.code === code);
+          if (matched) {
+            setSelectedCurrency(matched);
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to fetch user:", err);
