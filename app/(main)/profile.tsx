@@ -7,7 +7,7 @@ import { apiRequest } from "@/utils/api";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StatusBar, View } from "react-native";
+import { ScrollView, StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
@@ -53,14 +53,6 @@ export default function ProfileScreen() {
     }, []),
   );
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#00bf71" />
-      </View>
-    );
-  }
-
   return (
     <>
       <StatusBar barStyle="light-content" />
@@ -70,13 +62,14 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
       >
-        <TopProfile userData={user} />
+        <TopProfile userData={user} loading={loading} />
         {/* Oper fungsi buat buka modal ke komponen bawah kalau perlu */}
         <BottomProfile
           isModalOpen={isLogoutModalOpen}
           onModalOpen={setIsLogoutModalOpen}
           selectedCurrency={selectedCurrency}
           onCurrencyPress={openCurrencySheet}
+          loading={loading}
         />
       </ScrollView>
 

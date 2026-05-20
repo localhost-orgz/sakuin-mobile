@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/Skeleton";
 import React, { useState } from "react";
 import { Image, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,11 +9,48 @@ interface UserProps {
     email?: string;
     avatar_url?: string;
   } | null;
+  loading?: boolean;
 }
 
-const TopProfile = ({ userData }: UserProps) => {
+const TopProfile = ({ userData, loading }: UserProps) => {
   const insets = useSafeAreaInsets();
   const [avatarError, setAvatarError] = useState(false);
+
+  if (loading) {
+    return (
+      <View
+        className="bg-[#00bf71] items-center pb-10"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="w-full flex-row items-center justify-center px-5 mb-6">
+          <Text className="text-white text-lg font-bold">Account</Text>
+        </View>
+
+        <View className="relative mb-4">
+          <Skeleton
+            width={96}
+            height={96}
+            borderRadius={48}
+            style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+          />
+        </View>
+
+        <Skeleton
+          width={140}
+          height={20}
+          borderRadius={10}
+          style={{ backgroundColor: "rgba(255,255,255,0.25)", marginBottom: 8 }}
+        />
+
+        <Skeleton
+          width={180}
+          height={14}
+          borderRadius={7}
+          style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+        />
+      </View>
+    );
+  }
 
   const profileImage = userData?.avatar_url
     ? { uri: userData.avatar_url }

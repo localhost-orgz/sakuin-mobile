@@ -1,8 +1,20 @@
+import { Skeleton } from "@/components/Skeleton";
 import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Pressable, Text } from "react-native";
 
-const LogOutBtn = ({ onModalOpen }: any) => {
+const LogOutBtn = ({ onModalOpen, loading }: any) => {
+  if (loading) {
+    return (
+      <Skeleton
+        width="auto"
+        height={54}
+        borderRadius={16}
+        style={{ marginHorizontal: 20, backgroundColor: "#fee2e2" }}
+      />
+    );
+  }
+
   return (
     <Pressable
       onPress={() => onModalOpen(true)}

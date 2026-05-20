@@ -12,6 +12,7 @@ type BottomProfileProps = {
   onModalOpen: (open: boolean) => void;
   selectedCurrency: Currency;
   onCurrencyPress: () => void;
+  loading?: boolean;
 };
 
 const BottomProfile = ({
@@ -19,18 +20,20 @@ const BottomProfile = ({
   isModalOpen,
   selectedCurrency,
   onCurrencyPress,
+  loading,
 }: BottomProfileProps) => {
   return (
     <View className="mt-[-20px]">
       <View className="bg-[#f5f6fa] rounded-t-3xl pt-5 gap-4">
-        <MenuGroup items={GROUP_1} />
+        <MenuGroup items={GROUP_1} loading={loading} />
         <MenuGroup
           items={GROUP_2}
           selectedCurrency={selectedCurrency}
           onCurrencyPress={onCurrencyPress}
+          loading={loading}
         />
 
-        <LogOutBtn isModalOpen={isModalOpen} onModalOpen={onModalOpen} />
+        <LogOutBtn isModalOpen={isModalOpen} onModalOpen={onModalOpen} loading={loading} />
       </View>
     </View>
   );

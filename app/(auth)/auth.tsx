@@ -1,8 +1,8 @@
-import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
-import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef } from "react";
 import { Animated, Image, Pressable, Text, View } from "react-native";
 
@@ -45,26 +45,29 @@ export default function SignIn() {
   const router = useRouter();
 
   const handleGoogleLogin = async () => {
-    // try {
-    //   const redirectUrl = Linking.createURL("/"); 
-    //   const authUrl = `https://sakuin-be.vercel.app/auth/google?redirect_uri=${encodeURIComponent(redirectUrl)}`;
-    //   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+    try {
+      const redirectUrl = Linking.createURL("/");
+      const authUrl = `https://sakuin-be.vercel.app/auth/google?redirect_uri=${encodeURIComponent(redirectUrl)}`;
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl,
+      );
 
-    //   if (result.type === "success" && result.url) {
-    //     const url = result.url;
-    //     let token = url.split("token=")[1];
+      if (result.type === "success" && result.url) {
+        const url = result.url;
+        let token = url.split("token=")[1];
 
-    //     if (token) {
-    //       token = token.split("#")[0];
-    //       token = token.split("&")[0];
+        if (token) {
+          token = token.split("#")[0];
+          token = token.split("&")[0];
 
-    //       await SecureStore.setItemAsync("user_token", token);
-    //       router.replace("/(main)/home");
-    //     }
-    //   }
-    // } catch (error) {
-    //   console.error("Login Error:", error);
-    // }
+          await SecureStore.setItemAsync("user_token", token);
+          router.replace("/(main)/home");
+        }
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+    }
     router.replace("/(main)/home");
   };
 
