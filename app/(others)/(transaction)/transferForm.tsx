@@ -13,6 +13,8 @@ import {
   View,
   ActivityIndicator,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -335,9 +337,10 @@ export default function TransferPage() {
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <View
-        style={{ flex: 1, backgroundColor: "#ffff", paddingTop: insets.top }}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View
+          style={{ flex: 1, backgroundColor: "#ffff", paddingTop: insets.top }}
+        >
         <HeaderTransfer />
 
         <ScrollView
@@ -547,6 +550,7 @@ export default function TransferPage() {
           </TouchableOpacity>
         </View>
       </View>
+      </TouchableWithoutFeedback>
 
       {/* ── Modals ── */}
       <WalletBottomSheet
