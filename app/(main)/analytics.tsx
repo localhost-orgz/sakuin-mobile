@@ -173,6 +173,44 @@ const rpShort = (n: number) => {
   return String(n);
 };
 
+const dimColor = (color: string, opacity: number = 0.22) => {
+  if (!color) return `rgba(0, 191, 113, ${opacity})`;
+  if (color.startsWith("rgba")) {
+    const lastCommaIdx = color.lastIndexOf(",");
+    if (lastCommaIdx !== -1) {
+      return color.substring(0, lastCommaIdx + 1) + ` ${opacity})`;
+    }
+  }
+  if (color.startsWith("#")) {
+    const hexOpacity = Math.round(opacity * 255).toString(16).padStart(2, "0");
+    return color + hexOpacity;
+  }
+  return color;
+};
+
+const parseDateSafe = (dateStr: any) => {
+  if (dateStr instanceof Date) return dateStr;
+  if (!dateStr) return new Date();
+  
+  const parts = String(dateStr).split("T")[0].split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m, d);
+    }
+  }
+  return new Date(dateStr);
+};
+
+const getLocalDateString = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 // ─── FilterPill ───────────────────────────────────────────────────────────────
 const FilterPill = ({
   label,
@@ -249,7 +287,17 @@ const CategoryRow = ({
 }) => {
   const pct = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
   const scale = useRef(new Animated.Value(1)).current;
+  const widthAnim = useRef(new Animated.Value(0)).current;
   const { theme } = useWalletTheme(cat.themeId as any);
+
+  useEffect(() => {
+    Animated.timing(widthAnim, {
+      toValue: pct,
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [pct]);
 
   const handlePress = () => {
     Animated.sequence([
@@ -278,7 +326,7 @@ const CategoryRow = ({
           gap: 10,
           borderRadius: 14,
           padding: 12,
-          backgroundColor: selected ? `${cat.color}12` : "#f9fafb",
+          backgroundColor: selected ? dimColor(cat.color, 0.1) : "#f9fafb",
           borderWidth: 1.5,
           borderColor: selected ? cat.color : "transparent",
           opacity: rowAnim,
@@ -324,9 +372,9 @@ const CategoryRow = ({
                 height: "100%",
                 borderRadius: 99,
                 backgroundColor: cat.color,
-                width: rowAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["0%", `${pct.toFixed(1)}%`],
+                width: widthAnim.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ["0%", "100%"],
                 }),
               }}
             />
@@ -431,8 +479,8 @@ export default function Analytics() {
   const dynamicCats = useMemo<CatDef[]>(() => {
     const list = categories.map((cat: any) => {
       const id = cat._id || cat.id;
-      const themeId = cat.themeId || cat.theme_id || "ocean";
-      const theme = getWalletTheme(themeId);
+      const themeId = cat.themeId || cat.theme_id || cat.color || "ocean";
+      const theme = getWalletTheme(themeId as any);
       return {
         id,
         label: cat.name || cat.label || "Unnamed",
@@ -442,11 +490,13 @@ export default function Analytics() {
       };
     });
 
-    // Only append 'other' fallback category if there are expenses with category_id that doesn't match any user categories.
+    const categoryIds = new Set(categories.map((c) => c._id || c.id));
     const hasOtherSpending = transactions.some((tx: any) => {
       if (tx.type !== "expense") return false;
       const catObj = resolveCategory(tx.category_id);
-      return !catObj;
+      if (!catObj) return true;
+      const catId = catObj._id || catObj.id;
+      return !categoryIds.has(catId);
     });
 
     if (hasOtherSpending && !list.some((c) => c.id === "other")) {
@@ -485,7 +535,7 @@ export default function Analytics() {
   const cardAnim = useRef(new Animated.Value(0)).current;
   const pieAnim = useRef(new Animated.Value(0)).current;
   const catAnims = useMemo(
-    () => dynamicCats.map(() => new Animated.Value(0)),
+    () => dynamicCats.map(() => new Animated.Value(1)),
     [dynamicCats],
   );
 
@@ -588,7 +638,7 @@ export default function Analytics() {
     let minDate = new Date();
     let maxDate = new Date();
     expenses.forEach((tx, idx) => {
-      const d = new Date(tx.date);
+      const d = parseDateSafe(tx.date);
       if (idx === 0) {
         minDate = d;
         maxDate = d;
@@ -605,7 +655,7 @@ export default function Analytics() {
     let currentMon = new Date(startMon);
 
     while (currentMon <= endMon) {
-      const keyStr = currentMon.toISOString().split("T")[0];
+      const keyStr = getLocalDateString(currentMon);
       const label = formatWeekLabel(currentMon);
       const days: DayExpense[] = DAYS_OF_WEEK.map((d) => ({
         day: d,
@@ -618,9 +668,9 @@ export default function Analytics() {
     }
 
     expenses.forEach((tx) => {
-      const txDate = new Date(tx.date);
+      const txDate = parseDateSafe(tx.date);
       const mon = getWeekKey(txDate);
-      const keyStr = mon.toISOString().split("T")[0];
+      const keyStr = getLocalDateString(mon);
       const week = weeksMap[keyStr];
       if (week) {
         const dayIdx = txDate.getDay();
@@ -636,7 +686,9 @@ export default function Analytics() {
           if (dayObj.breakdown[catId] !== undefined) {
             dayObj.breakdown[catId] += amt;
           } else {
-            dayObj.breakdown["other"] += amt;
+            if (dayObj.breakdown["other"] !== undefined) {
+              dayObj.breakdown["other"] += amt;
+            }
           }
         }
       }
@@ -652,7 +704,8 @@ export default function Analytics() {
     const expenses = transactions.filter((t) => t.type === "expense");
     const years = new Set<number>();
     expenses.forEach((tx) => {
-      const yearVal = new Date(tx.date).getFullYear();
+      const date = parseDateSafe(tx.date);
+      const yearVal = date.getFullYear();
       if (!isNaN(yearVal)) {
         years.add(yearVal);
       }
@@ -674,7 +727,7 @@ export default function Analytics() {
     });
 
     expenses.forEach((tx) => {
-      const date = new Date(tx.date);
+      const date = parseDateSafe(tx.date);
       const yr = date.getFullYear();
       const monthIdx = date.getMonth();
       const monthKey = MONTHS_OF_YEAR[monthIdx];
@@ -691,7 +744,9 @@ export default function Analytics() {
           if (monthObj.breakdown[catId] !== undefined) {
             monthObj.breakdown[catId] += amt;
           } else {
-            monthObj.breakdown["other"] += amt;
+            if (monthObj.breakdown["other"] !== undefined) {
+              monthObj.breakdown["other"] += amt;
+            }
           }
         }
       }
@@ -776,22 +831,13 @@ export default function Analytics() {
 
   const breakdown = getBreakdown();
 
-  const displayBreakdown: Record<CatId, number> = selectedCat
-    ? (Object.fromEntries(
-        dynamicCats.map((c) => [
-          c.id,
-          c.id === selectedCat ? breakdown[c.id] : 0,
-        ]),
-      ) as Record<CatId, number>)
-    : breakdown;
+  const totalExpense = selectedCat
+    ? (breakdown[selectedCat] || 0)
+    : Object.values(breakdown).reduce((s, v) => s + v, 0);
 
-  const totalExpense = Object.values(displayBreakdown).reduce(
-    (s, v) => s + v,
-    0,
-  );
-
-  const activeColor = selectedCat ? CAT_COLORS[selectedCat] : GREEN;
-  const dimmedColor = activeColor + "38";
+  const selectedCatObj = dynamicCats.find((c) => c.id === selectedCat);
+  const activeColor = selectedCatObj ? selectedCatObj.color : GREEN;
+  const dimmedColor = dimColor(activeColor, 0.22);
 
   const barData =
     mode === "weekly"
@@ -879,14 +925,15 @@ export default function Analytics() {
         });
 
   const maxBarVal = Math.max(...barData.map((d) => d.value), 1);
+  
   const pieData = dynamicCats
     .map((c) => ({
-      value: displayBreakdown[c.id] || 0,
-      color: displayBreakdown[c.id] === 0 ? "#e5e7eb" : c.color,
+      value: breakdown[c.id] || 0,
+      color: breakdown[c.id] === 0 ? "#e5e7eb" : c.color,
       focused: selectedCat === c.id,
       catId: c.id,
     }))
-    .filter((d) => d.value > 0 || selectedCat === null);
+    .filter((d) => d.value > 0);
 
   const navLabel =
     mode === "weekly" ? dynamicWeeks[weekIdx]?.label || "" : String(year);
@@ -1358,8 +1405,8 @@ export default function Analytics() {
                 <CategoryRow
                   key={cat.id}
                   cat={cat}
-                  amount={displayBreakdown[cat.id]}
-                  totalAmount={Object.values(displayBreakdown).reduce(
+                  amount={breakdown[cat.id] || 0}
+                  totalAmount={Object.values(breakdown).reduce(
                     (s, v) => s + v,
                     0,
                   )}

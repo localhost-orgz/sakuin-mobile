@@ -113,10 +113,10 @@ const TransactionRow = ({
 }) => {
   const categoryEmoticon = item.category_id?.emoticon || "💸";
   const categoryName = item.category_id?.name || "Other";
-  const categorySlug = item.category_id?.slug || "ocean";
-
+  
+  const themeId = item.category_id?.themeId || item.category_id?.theme_id || item.category_id?.color || "ocean";
   const { theme } = useWalletTheme(
-    (categorySlug as WalletThemeId) ?? "ocean"
+    (themeId as WalletThemeId) ?? "ocean"
   );
 
   const walletName = item.wallet_id ? item.wallet_id.name : "Wallet";

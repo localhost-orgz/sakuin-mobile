@@ -16,6 +16,9 @@ interface RecentTransactionItemProps {
       name: string;
       slug: string;
       emoticon: string;
+      themeId?: string;
+      theme_id?: string;
+      color?: string;
     };
   };
 }
@@ -45,9 +48,10 @@ const RecentTransactionItem = ({ item }: RecentTransactionItemProps) => {
     }
   };
 
-  // Tema fallback jika slug tidak terdaftar di hook themeId wallet Anda
+  // Tema fallback dari category_id
+  const themeId = item.category_id?.themeId || item.category_id?.theme_id || item.category_id?.color || "ocean";
   const { theme } = useWalletTheme(
-    (item.category_id?.slug as WalletThemeId) ?? "ocean"
+    (themeId as WalletThemeId) ?? "ocean"
   );
 
   const isIncome = item.type === "income";

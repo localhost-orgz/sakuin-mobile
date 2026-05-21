@@ -239,7 +239,7 @@ export default function Home() {
         label: cat.name || cat.label,
         icon: cat.emoticon || cat.icon || "🏷️",
         amount: new Intl.NumberFormat("id-ID").format(totalSpend),
-        themeId: cat.themeId || cat.theme_id || "ocean",
+        themeId: cat.themeId || cat.theme_id || cat.color || "ocean",
         rawAmount: totalSpend,
       };
     });
