@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
-const AmountSection = ({ amount, onAmount }: any) => {
+const AmountSection = ({ amount, onAmount, currency }: any) => {
   const QUICK_AMOUNTS = ["50.000", "100.000", "250.000", "500.000"];
 
   return (
@@ -26,7 +26,7 @@ const AmountSection = ({ amount, onAmount }: any) => {
         }}
         className="flex flex-row items-end gap-2 border-b-2 py-2"
       >
-        <Text className="text-2xl font-bold text-[#9ca3af]">Rp</Text>
+        <Text className="text-2xl font-bold text-[#9ca3af]">{currency?.symbol ?? "Rp"}</Text>
         <TextInput
           value={amount}
           onChangeText={(text) => {
@@ -69,7 +69,7 @@ const AmountSection = ({ amount, onAmount }: any) => {
                 color: amount === q ? "white" : "#6b7280",
               }}
             >
-              Rp{q}
+              {currency?.symbol ?? "Rp"}{q}
             </Text>
           </TouchableOpacity>
         ))}

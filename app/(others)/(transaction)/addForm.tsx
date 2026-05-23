@@ -187,7 +187,8 @@ export default function AddTransaction() {
         name: name,
         description: description,
         date: formatDateForApi(date), // format: "YYYY-MM-DD"
-        input_method: "manual"
+        input_method: "manual",
+        currency: selectedCurrency.code,
       };
 
       const response = await apiRequest("/transaction", {

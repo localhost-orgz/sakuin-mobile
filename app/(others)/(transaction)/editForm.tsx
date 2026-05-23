@@ -321,7 +321,8 @@ export default function EditTransaction() {
         name: name,
         description: description,
         date: formatDateForApi(date),
-        input_method: "manual"
+        input_method: "manual",
+        currency: selectedCurrency.code,
       };
 
       const response = await apiRequest(`/transaction/${transactionId}`, {

@@ -2,10 +2,13 @@ import useWalletTheme from "@/hooks/useWalletTheme";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowDownUp, CheckCircle2, ChevronDown } from "lucide-react-native";
 import { useRef, useState, useEffect } from "react";
+import CurrencyBottomSheet from "@/components/Form/CurrencyBottomSheet";
+import { CURRENCY_LIST } from "@/constants/currencyList";
 import {
   Animated,
   Dimensions,
   Modal,
+  Pressable,
   ScrollView,
   StatusBar,
   Text,
@@ -27,7 +30,7 @@ import { apiRequest } from "@/utils/api";
 import type { WalletThemeId } from "@/hooks/useWalletTheme";
 import BottomSheet from "@gorhom/bottom-sheet";
 
-const SuccessModal = ({ visible, amount, from, to, onClose }: any) => {
+const SuccessModal = ({ visible, amount, from, to, currency, onClose }: any) => {
   const insets = useSafeAreaInsets();
   const scaleAnim = useRef(new Animated.Value(0.7)).current;
   const { width } = Dimensions.get("window");
@@ -79,7 +82,7 @@ const SuccessModal = ({ visible, amount, from, to, onClose }: any) => {
             Transfer Successful!
           </Text>
           <Text style={{ fontSize: 34, fontWeight: "800", color: "#00bf71" }}>
-            Rp{amount}
+            {currency?.symbol ?? "Rp"}{amount}
           </Text>
           <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center" }}>
             From{" "}
@@ -129,17 +132,22 @@ export default function TransferPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const fromWalletBottomSheet = useRef<BottomSheet>(null);
   const toWalletBottomSheet = useRef<BottomSheet>(null);
+  const currencyBottomSheet = useRef<BottomSheet>(null);
 
   const [selectedFromWallet, setSelectedFromWallet] = useState<any>(null);
   const [selectedToWallet, setSelectedToWallet] = useState<any>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    CURRENCY_LIST.find((c) => c.code === "IDR") ?? CURRENCY_LIST[0],
+  );
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [walletsRes, categoriesRes] = await Promise.all([
+        const [walletsRes, categoriesRes, profileRes] = await Promise.all([
           apiRequest("/wallets", { method: "GET" }),
           apiRequest("/categories", { method: "GET" }),
+          apiRequest("/auth/profile", { method: "GET" }),
         ]);
 
         let rawWallets = [];
@@ -180,6 +188,15 @@ export default function TransferPage() {
           const remainingWallets = mappedWallets.filter((w: any) => w.id !== fromWalletObj.id);
           setSelectedToWallet(remainingWallets[0] || fromWalletObj);
         }
+
+        if (profileRes?.status === "success" && profileRes.data?.default_currency) {
+          const userCurrency = profileRes.data.default_currency;
+          const code = typeof userCurrency === "string" ? userCurrency : userCurrency.code;
+          const matched = CURRENCY_LIST.find((c) => c.code === code);
+          if (matched) {
+            setSelectedCurrency(matched);
+          }
+        }
       } catch (err) {
         console.error("Failed to load transfer page data:", err);
         Alert.alert("Error", "Gagal memuat data dompet.");
@@ -211,6 +228,17 @@ export default function TransferPage() {
   const handleSelectToWallet = (wallet: any) => {
     setSelectedToWallet(wallet);
     closeToWalletSheet();
+  };
+
+  const openCurrencySheet = () => {
+    currencyBottomSheet.current?.expand();
+  };
+  const closeCurrencySheet = () => {
+    currencyBottomSheet.current?.close();
+  };
+  const handleSelectCurrency = (currency: any) => {
+    setSelectedCurrency(currency);
+    closeCurrencySheet();
   };
 
   const swapWallets = () => {
@@ -329,6 +357,7 @@ export default function TransferPage() {
           description: note || `Transfer saldo ke ${selectedToWallet.bank}`,
           date: today,
           input_method: "manual",
+          currency: selectedCurrency.code,
         },
       });
 
@@ -443,8 +472,40 @@ export default function TransferPage() {
             </View>
           </View>
 
+          {/* ── CURRENCY SELECTOR ── */}
+          <View
+            style={{
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 4,
+            }}
+            className="bg-white rounded-2xl p-5"
+          >
+            <Text className="text-sm mb-3 font-bold uppercase text-[#9ca3af]">
+              Currency
+            </Text>
+            <Pressable
+              onPress={openCurrencySheet}
+              className="flex flex-row p-3 bg-[#f8fafc] border border-slate-200 rounded-xl items-center justify-between active:bg-slate-100"
+            >
+              <View className="flex flex-row items-center gap-3">
+                <Text className="text-xl">{selectedCurrency.flag}</Text>
+                <View style={{ alignItems: "flex-start" }}>
+                  <Text className="text-sm font-bold text-slate-800">
+                    {selectedCurrency.code}
+                  </Text>
+                  <Text className="text-xs text-slate-400">
+                    {selectedCurrency.name}
+                  </Text>
+                </View>
+              </View>
+              <ChevronDown stroke="#94a3b8" size={18} />
+            </Pressable>
+          </View>
+
           {/* ── AMOUNT SECTION ── */}
-          <AmountSection amount={amount} onAmount={setAmount} />
+          <AmountSection amount={amount} onAmount={setAmount} currency={selectedCurrency} />
 
           {/* ── NOTE SECTION ── */}
           <NoteSection note={note} onNote={setNote} />
@@ -513,7 +574,7 @@ export default function TransferPage() {
                 <Text
                   style={{ fontSize: 14, fontWeight: "800", color: "#00bf71" }}
                 >
-                  Rp{amount}
+                  {selectedCurrency.symbol ?? "Rp"}{amount}
                 </Text>
               </View>
             </View>
@@ -559,7 +620,7 @@ export default function TransferPage() {
                   color: (canSubmit && !submitting) ? "white" : "#9ca3af",
                 }}
               >
-                {canSubmit ? `Transfer Rp${amount}` : "Enter Amount"}
+                {canSubmit ? `Transfer ${selectedCurrency.symbol ?? "Rp"}${amount}` : "Enter Amount"}
               </Text>
             )}
           </TouchableOpacity>
@@ -580,11 +641,17 @@ export default function TransferPage() {
         selectedWallet={selectedToWallet}
         onSelect={handleSelectToWallet}
       />
+      <CurrencyBottomSheet
+        ref={currencyBottomSheet}
+        selectedCurrency={selectedCurrency}
+        onSelect={handleSelectCurrency}
+      />
       <SuccessModal
         visible={showSuccess}
         amount={amount}
         from={selectedFromWallet}
         to={selectedToWallet}
+        currency={selectedCurrency}
         onClose={() => {
           setShowSuccess(false);
           router.back();
