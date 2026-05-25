@@ -30,6 +30,7 @@ export default function Home() {
   const [wallets, setWallets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]); // State untuk menyimpan data transaksi dari API
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUser = async () => {
@@ -80,6 +81,17 @@ export default function Home() {
     }
   };
 
+  const fetchGoals = async () => {
+    try {
+      const res = await apiRequest("/goals", { method: "GET" });
+      if (res.status === "success" && res.data) {
+        setGoals(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch goals:", err);
+    }
+  };
+
   const initHomeData = async () => {
     try {
       setLoading(true);
@@ -101,6 +113,7 @@ export default function Home() {
           fetchWallets(),
           fetchTransactions(),
           fetchCategories(),
+          fetchGoals(),
         ]);
       }
     } catch (err) {
@@ -135,6 +148,7 @@ export default function Home() {
           fetchWallets(),
           fetchTransactions(),
           fetchCategories(),
+          fetchGoals(),
         ]);
       }
     } catch (err) {
@@ -287,7 +301,7 @@ export default function Home() {
         {/* ── Content sections ── */}
         <View style={{ marginTop: 56, marginBottom: 0 }}>
           <TopSpendCategory TopCategories={topCategoriesData} loading={loading} />
-          <CurrentGoals goalsList={CURRENT_GOALS} loading={loading} />
+          <CurrentGoals goalsList={goals} loading={loading} />
           {/* Properti transactions sekarang dialirkan dari state API bukan dari konstanta RECENT_TRANSACTIONS mock lagi */}
           <RecentTransactions transactions={transactions} loading={loading} />
 

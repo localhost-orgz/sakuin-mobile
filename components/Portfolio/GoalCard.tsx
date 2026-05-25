@@ -14,9 +14,15 @@ const GoalCard = ({ goal, isBalanceShow, onBalanceShow }: any) => {
     return amount.toString();
   };
   return (
-    <Link href={"/(others)/detailGoal"} asChild>
+    <Link
+      href={{
+        pathname: "/(others)/detailGoal",
+        params: { goalId: goal.id || goal._id },
+      }}
+      asChild
+    >
       <Pressable
-        key={goal.id}
+        key={goal.id || goal._id}
         style={{
           shadowColor: "#000",
           shadowOffset: {

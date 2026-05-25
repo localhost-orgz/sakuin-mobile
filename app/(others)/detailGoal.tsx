@@ -20,7 +20,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   RefreshControl,
   SectionList,
@@ -29,9 +29,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EditGoalSheet from "./editGoal";
+import { apiRequest } from "@/utils/api";
 
 // ─── Mock goal data ───────────────────────────────────────────────────────────
 const MOCK_GOALS = [
@@ -263,27 +266,50 @@ export default function DetailGoal() {
   const params = useLocalSearchParams<{ goalId?: string }>();
 
   const goalId = params.goalId ?? "1";
-  const goal = MOCK_GOALS.find((g) => g.id === goalId) ?? MOCK_GOALS[0];
-  const allTransactions = MOCK_TRANSACTIONS[goal.id] ?? [];
-
+  
+  const [goal, setGoal] = useState<any>(null);
+  const [loadingGoal, setLoadingGoal] = useState(true);
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isEditSheetVisible, setIsEditSheetVisible] = useState(false);
 
-  const onRefresh = useCallback(() => {
+  const fetchGoalDetail = useCallback(async () => {
+    try {
+      const res = await apiRequest(`/goals/${goalId}`, { method: "GET" });
+      if (res.status === "success" && res.data) {
+        setGoal(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch goal detail:", err);
+    } finally {
+      setLoadingGoal(false);
+    }
+  }, [goalId]);
+
+  useEffect(() => {
+    fetchGoalDetail();
+  }, [fetchGoalDetail]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Replace with your real data fetch
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    await fetchGoalDetail();
+    setRefreshing(false);
+  }, [fetchGoalDetail]);
 
-  const { theme } = useWalletTheme(goal.themeId as WalletThemeId);
+  const allTransactions = useMemo(() => {
+    if (!goal) return [];
+    return MOCK_TRANSACTIONS[goal.id] ?? MOCK_TRANSACTIONS["1"] ?? [];
+  }, [goal]);
 
-  const percentage = Math.min((goal.current / goal.target) * 100, 100);
-  const remaining = goal.target - goal.current;
+  const { theme } = useWalletTheme(goal?.themeId ? (goal.themeId as WalletThemeId) : "ocean");
+
+  const percentage = goal ? Math.min((goal.current / goal.target) * 100, 100) : 0;
+  const remaining = goal ? goal.target - goal.current : 0;
   const isCompleted = percentage >= 100;
 
   const filtered = useMemo(() => {
+    if (!goal) return [];
     if (!search.trim()) return allTransactions;
     const q = search.toLowerCase();
     return allTransactions.filter(
@@ -292,17 +318,25 @@ export default function DetailGoal() {
         tx.subtitle.toLowerCase().includes(q) ||
         tx.wallet.toLowerCase().includes(q),
     );
-  }, [search, allTransactions]);
+  }, [search, allTransactions, goal]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
 
+  if (loadingGoal || !goal) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#f5f6fa", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#00bf71" />
+      </View>
+    );
+  }
+
   const goalData = {
-    id: "2",
-    name: "Bali Trip",
-    icon: "🏖️",
-    current: 3200000,
-    target: 5000000,
-    themeId: "ember",
+    id: goal.id || goal._id,
+    name: goal.name,
+    icon: goal.icon || "🎯",
+    current: goal.current,
+    target: goal.target,
+    themeId: goal.themeId || "ocean",
   };
 
   // ── Luminance-based contrast tokens ───────────────────────────────────────
@@ -831,7 +865,28 @@ export default function DetailGoal() {
                 }}
                 onPress={() => {
                   setIsMenuVisible(false);
-                  alert("Hapus Goal?"); // 😎 Ganti dengan logic hapus beneran nanti
+                  Alert.alert(
+                    "Hapus Goal",
+                    "Apakah Anda yakin ingin menghapus goal ini?",
+                    [
+                      { text: "Batal", style: "cancel" },
+                      {
+                        text: "Hapus",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const res = await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
+                            if (res.status === "success" || res.message) {
+                              router.back();
+                            }
+                          } catch (err) {
+                            console.error("Failed to delete goal:", err);
+                            alert("Gagal menghapus goal");
+                          }
+                        }
+                      }
+                    ]
+                  );
                 }}
               >
                 <View
@@ -859,7 +914,11 @@ export default function DetailGoal() {
         <EditGoalSheet
           isVisible={isEditSheetVisible}
           onClose={() => setIsEditSheetVisible(false)}
-          initialData={goalData}
+          initialData={goal}
+          onSave={async () => {
+            await fetchGoalDetail();
+            setIsEditSheetVisible(false);
+          }}
         />
       </View>
     </>

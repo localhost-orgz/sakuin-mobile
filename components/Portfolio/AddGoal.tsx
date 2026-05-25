@@ -1,6 +1,7 @@
 import { MONEY_TRACKER_EMOJIS } from "@/constants/emojiList";
 import { Check, Plus, Target, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { apiRequest } from "@/utils/api";
 import {
   Animated,
   Dimensions,
@@ -941,7 +942,7 @@ const AddGoalModal = ({
 };
 
 // ─── ADD GOAL BUTTON ──────────────────────────────────────────────────────────
-const AddGoal = () => {
+const AddGoal = ({ onRefreshNeeded }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -962,14 +963,32 @@ const AddGoal = () => {
     setModalVisible(true);
   };
 
-  const handleAdd = (goal: {
+  const handleAdd = async (goal: {
     name: string;
     icon: string;
     target: number;
     themeId: string;
   }) => {
-    // Wire up to your goals store here
-    console.log("New goal:", goal);
+    try {
+      const res = await apiRequest("/goals", {
+        method: "POST",
+        body: {
+          name: goal.name,
+          icon: goal.icon,
+          target: goal.target,
+          themeId: goal.themeId,
+          current: 0,
+        }
+      });
+      if (res.status === "success" || res.data) {
+        if (onRefreshNeeded) {
+          await onRefreshNeeded();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to add goal:", err);
+      alert("Gagal menambahkan goal");
+    }
   };
 
   return (

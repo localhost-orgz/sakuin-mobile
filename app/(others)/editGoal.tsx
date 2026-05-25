@@ -1,6 +1,7 @@
 import GoalCard from "@/components/Portfolio/GoalCard"; // ✅ Import component portfolio
 import { Check, X } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { apiRequest } from "@/utils/api";
 import {
   Dimensions,
   Modal,
@@ -20,19 +21,46 @@ export default function EditGoalSheet({
   isVisible,
   onClose,
   initialData,
+  onSave,
 }: any) {
   const insets = useSafeAreaInsets();
   const walletThemes = WALLET_THEMES;
   // 💡 State dengan dummy pre-filled data
-  const [goalName, setGoalName] = useState(
-    initialData?.title || "Tabungan Macbook M3",
-  );
-  const [selectedColor, setSelectedColor] = useState(
-    initialData?.themeId || "violet",
-  );
-  const [goalTarget, setGoalTarget] = useState(
-    initialData?.target?.toString() || "",
-  );
+  const [goalName, setGoalName] = useState("");
+  const [selectedColor, setSelectedColor] = useState("ocean");
+  const [goalTarget, setGoalTarget] = useState("");
+
+  useEffect(() => {
+    if (initialData) {
+      setGoalName(initialData.name || "");
+      setSelectedColor(initialData.themeId || "ocean");
+      setGoalTarget(initialData.target ? initialData.target.toString() : "");
+    }
+  }, [initialData, isVisible]);
+
+  const handleSave = async () => {
+    if (!goalName.trim() || !goalTarget) return;
+    try {
+      const res = await apiRequest(`/goals/${initialData.id || initialData._id}`, {
+        method: "PUT",
+        body: {
+          name: goalName.trim(),
+          themeId: selectedColor,
+          target: Number(goalTarget),
+        }
+      });
+      if (res.status === "success" || res.data) {
+        if (onSave) {
+          await onSave();
+        } else {
+          onClose();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update goal:", err);
+      alert("Gagal memperbarui goal");
+    }
+  };
   const formatNumber = (val: string | number) => {
     const clean = String(val).replace(/[^0-9]/g, "");
 
@@ -86,10 +114,7 @@ export default function EditGoalSheet({
               Edit Goal
             </Text>
             <TouchableOpacity
-              onPress={() => {
-                alert("Saved!");
-                onClose();
-              }}
+              onPress={handleSave}
             >
               <Text
                 style={{

@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import AddGoal from "./AddGoal";
 import GoalCard from "./GoalCard";
 
-const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow, loading }: any) => {
+const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow, loading, onRefreshNeeded }: any) => {
   if (loading) {
     return (
       <>
@@ -27,12 +27,12 @@ const GoalCardsSection = ({ goals, isBalanceShow, onBalanceShow, loading }: any)
       </View>
       <View className="flex-row flex-wrap px-5 mt-3 justify-between">
         {/* Item Wallet */}
-        <AddGoal />
+        <AddGoal onRefreshNeeded={onRefreshNeeded} />
         {goals.map((goal: any) => (
           <GoalCard
             isBalanceShow={isBalanceShow}
             onBalanceShow={onBalanceShow}
-            key={goal.id}
+            key={goal.id || goal._id}
             goal={goal}
           />
         ))}
