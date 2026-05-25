@@ -172,6 +172,9 @@ export default function SakuResult() {
                   setSplitSession({
                     amount: result.amount,
                     items: result.items,
+                    category_id: result.category_id,
+                    description: result.description,
+                    date: result.date,
                     participants: [{ id: "me", name: "Me" }],
                     assignedProducts: result.items.map(() => ["me"]),
                   });

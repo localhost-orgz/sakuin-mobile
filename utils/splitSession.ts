@@ -16,6 +16,9 @@ export type SplitSession = {
   participants: SplitParticipant[];
   /** Participant ids assigned to each item index */
   assignedProducts: string[][];
+  category_id?: string;
+  description?: string;
+  date?: string;
 };
 
 export type ParticipantBillItem = {

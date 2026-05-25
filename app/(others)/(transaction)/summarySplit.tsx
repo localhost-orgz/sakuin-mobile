@@ -78,8 +78,27 @@ export default function SakuSummary() {
 
   const totalItems = summaryData.items.length;
 
-  const handleConfirm = () => {
-    console.log("Final Save:", { selectedWallet, isRecordTransaction });
+  const handleConfirm = async () => {
+    if (isRecordTransaction && selectedWallet) {
+      try {
+        const payload = {
+          category_id: splitSession?.category_id || "69a99efab5420796db171e00",
+          wallet_id: selectedWallet._id || selectedWallet.id,
+          amount: String(summaryData.amount),
+          type: "expense",
+          name: splitSession?.description ? splitSession.description.substring(0, 30) : "Scan SakuSnap",
+          description: splitSession?.description || "Pembelian dari SakuSnap",
+          date: splitSession?.date || new Date().toISOString().split("T")[0],
+          input_method: "snap"
+        };
+        await apiRequest("/transaction", {
+          method: "POST",
+          body: payload
+        });
+      } catch (err) {
+        console.error("Gagal menyimpan transaksi setelah ocr:", err);
+      }
+    }
     router.push("/(others)/(transaction)/participantBills");
   };
 

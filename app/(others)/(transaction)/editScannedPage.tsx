@@ -362,6 +362,9 @@ export default function SakuEdit() {
                         price: item.price,
                         total: item.total
                       })),
+                      category_id: formData.category_id,
+                      description: formData.description,
+                      date: formData.date,
                       participants: [{ id: "me", name: "Me" }],
                       assignedProducts: formData.items.map(() => ["me"]),
                     });
