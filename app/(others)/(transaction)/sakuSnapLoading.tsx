@@ -75,6 +75,36 @@ export default function SakuLoading() {
 
         if (active) {
           if (res.status === "success" && res.data) {
+            // Fetch wallets list to find a default wallet
+            let walletId = "w_1";
+            try {
+              const walletsRes = await apiRequest("/wallets", { method: "GET" });
+              if (walletsRes?.status === "success" && Array.isArray(walletsRes.data) && walletsRes.data.length > 0) {
+                walletId = walletsRes.data[0]._id || walletsRes.data[0].id;
+              }
+            } catch (wErr) {
+              console.warn("Failed to fetch wallets for default transaction mapping", wErr);
+            }
+
+            // Post transaction automatically to /transaction
+            try {
+              await apiRequest("/transaction", {
+                method: "POST",
+                body: {
+                  category_id: res.data.category_id || "69a99efab5420796db171e00",
+                  wallet_id: walletId,
+                  amount: String(res.data.amount || 0),
+                  type: "expense",
+                  name: res.data.description ? res.data.description.substring(0, 30) : "Scan SakuSnap",
+                  description: res.data.description || "Pembelian dari SakuSnap",
+                  date: res.data.date || new Date().toISOString().split("T")[0],
+                  input_method: "snap"
+                }
+              });
+            } catch (tErr) {
+              console.warn("Failed to post transaction automatically after OCR", tErr);
+            }
+
             router.replace({
               pathname: "/(others)/(transaction)/scannedPage",
               params: { result: JSON.stringify(res.data) }

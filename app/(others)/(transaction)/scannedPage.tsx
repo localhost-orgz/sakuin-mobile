@@ -152,7 +152,13 @@ export default function SakuResult() {
 
           {/* Bottom Actions */}
           <View className="p-5 flex-row gap-3 bg-[#f7f8fa] border-t border-gray-200">
-            <Link href={"/(others)/(transaction)/editScannedPage"} asChild>
+            <Link
+              href={{
+                pathname: "/(others)/(transaction)/editScannedPage",
+                params: { result: JSON.stringify(result) },
+              }}
+              asChild
+            >
               <Pressable className="flex-1 gap-2 flex-row bg-white py-4 rounded-xl items-center justify-center border border-gray-200">
                 <Edit3 size={15} color="#111827" />
 

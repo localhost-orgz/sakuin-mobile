@@ -1,4 +1,4 @@
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useLocalSearchParams } from "expo-router";
 import { setSplitSession } from "@/utils/splitSession";
 import {
   AlignLeft,
@@ -9,7 +9,7 @@ import {
   Trash2,
   Utensils,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -74,10 +74,22 @@ const withItemIds = (
 
 export default function SakuEdit() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ result?: string }>();
+
+  const initialData = useMemo(() => {
+    if (params.result) {
+      try {
+        return JSON.parse(params.result);
+      } catch (e) {
+        console.error("Failed to parse edit initial data", e);
+      }
+    }
+    return MOCK_STRUK_DATA.data;
+  }, [params.result]);
 
   const [formData, setFormData] = useState({
-    ...MOCK_STRUK_DATA.data,
-    items: withItemIds(MOCK_STRUK_DATA.data.items),
+    ...initialData,
+    items: withItemIds(initialData.items || []),
   });
 
   const updateItem = (index: number, field: string, value: any) => {
@@ -106,7 +118,7 @@ export default function SakuEdit() {
   };
 
   const removeItem = (index: number) => {
-    const newItems = formData.items.filter((_, i) => i !== index);
+    const newItems = formData.items.filter((_: any, i: number) => i !== index);
 
     setFormData({
       ...formData,
@@ -239,7 +251,7 @@ export default function SakuEdit() {
                   </Text>
                 </TouchableOpacity>
 
-                {formData.items.map((item, index) => (
+                {formData.items.map((item: any, index: number) => (
                   <View key={item.id} className="mb-3">
                     <View className="bg-white rounded-lg p-4 border border-gray-200">
                     <View className="flex-row justify-between items-start mb-4">
@@ -341,10 +353,10 @@ export default function SakuEdit() {
               <Link href={"/(others)/(transaction)/splitPage"} asChild>
                 <Pressable
                   onPress={() => {
-                    const totalAmount = formData.items.reduce((sum, item) => sum + item.total, 0);
+                    const totalAmount = formData.items.reduce((sum: number, item: any) => sum + item.total, 0);
                     setSplitSession({
                       amount: totalAmount,
-                      items: formData.items.map(item => ({
+                      items: formData.items.map((item: any) => ({
                         name: item.name,
                         quantity: item.quantity,
                         price: item.price,
