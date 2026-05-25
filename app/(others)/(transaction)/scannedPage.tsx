@@ -1,4 +1,4 @@
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useLocalSearchParams } from "expo-router";
 import {
   Calendar,
   ChevronLeft,
@@ -6,7 +6,7 @@ import {
   ReceiptText,
   Utensils,
 } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Pressable,
   ScrollView,
@@ -22,7 +22,18 @@ import { setSplitSession } from "@/utils/splitSession";
 
 export default function SakuResult() {
   const router = useRouter();
-  const result = MOCK_STRUK_DATA.data;
+  const params = useLocalSearchParams<{ result?: string }>();
+
+  const result = useMemo(() => {
+    if (params.result) {
+      try {
+        return JSON.parse(params.result);
+      } catch (e) {
+        console.error("Failed to parse SakuSnap OCR result", e);
+      }
+    }
+    return MOCK_STRUK_DATA.data;
+  }, [params.result]);
 
   // Helper buat format Rupiah
   const formatIDR = (val: number) => {
@@ -101,7 +112,7 @@ export default function SakuResult() {
                 </Text>
               </View>
 
-              {result.items.map((item, index) => (
+              {result.items.map((item: any, index: number) => (
                 <View
                   key={index}
                   className={`flex-row justify-between items-center py-3 ${

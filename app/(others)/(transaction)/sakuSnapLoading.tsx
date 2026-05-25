@@ -9,7 +9,9 @@ import {
   SafeAreaView,
   Text,
   View,
+  Alert,
 } from "react-native";
+import { apiRequest } from "@/utils/api";
 
 const { height: SH, width: SW } = Dimensions.get("window");
 
@@ -21,7 +23,7 @@ export default function SakuLoading() {
   const scanAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // 2. Dummy Loading & Navigation Logic ⏳
+  // 2. OCR API Integration Logic ⏳
   useEffect(() => {
     // Animasi Line Scanning naik-turun
     Animated.loop(
@@ -48,12 +50,61 @@ export default function SakuLoading() {
       useNativeDriver: true,
     }).start();
 
-    // 💡 Dummy Timer: Pindah ke scannedPage setelah 4 detik
-    const timer = setTimeout(() => {
-      router.replace("/(others)/(transaction)/scannedPage");
-    }, 4500);
+    let active = true;
 
-    return () => clearTimeout(timer);
+    async function performOcr() {
+      try {
+        const formData = new FormData();
+        
+        // Prepare file name and type
+        const uriParts = (imageUri as string).split('/');
+        const fileName = uriParts[uriParts.length - 1] || "receipt.jpg";
+        
+        // Append file
+        formData.append("receipt", {
+          uri: imageUri,
+          name: fileName,
+          type: "image/jpeg",
+        } as any);
+
+        const res = await apiRequest("/ai/sakusnap", {
+          method: "POST",
+          body: formData,
+          isFormData: true,
+        });
+
+        if (active) {
+          if (res.status === "success" && res.data) {
+            router.replace({
+              pathname: "/(others)/(transaction)/scannedPage",
+              params: { result: JSON.stringify(res.data) }
+            });
+          } else {
+            throw new Error(res.message || "Failed to parse receipt");
+          }
+        }
+      } catch (err: any) {
+        console.error("OCR API error:", err);
+        if (active) {
+          Alert.alert(
+            "Gagal Scan Struk",
+            err.message || "Koneksi bermasalah atau AI gagal membaca struk.",
+            [
+              {
+                text: "Kembali",
+                onPress: () => router.back(),
+              }
+            ]
+          );
+        }
+      }
+    }
+
+    performOcr();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
