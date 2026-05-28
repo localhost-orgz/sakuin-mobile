@@ -363,6 +363,7 @@ export default function SakuEdit() {
                         total: item.total
                       })),
                       category_id: formData.category_id,
+                      category_name: formData.category_name,
                       description: formData.description,
                       date: formData.date,
                       participants: [{ id: "me", name: "Me" }],

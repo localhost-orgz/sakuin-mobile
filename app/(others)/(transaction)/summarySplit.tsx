@@ -1,3 +1,4 @@
+import CategoryBottomSheet from "@/components/Form/CategoryBottomSheet";
 import WalletBottomSheet from "@/components/Form/WalletBottomSheet";
 import { apiRequest } from "@/utils/api";
 import { getSplitSession } from "@/utils/splitSession";
@@ -10,6 +11,7 @@ import {
   Circle,
   Info,
   Wallet,
+  Tag,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -36,32 +38,67 @@ const FALLBACK_SUMMARY = {
 export default function SakuSummary() {
   const router = useRouter();
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const categoryBottomSheetRef = useRef<BottomSheet>(null);
 
   const [wallets, setWallets] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [isRecordTransaction, setIsRecordTransaction] = useState(true);
 
+  const splitSession = getSplitSession();
+
   useEffect(() => {
-    async function fetchWallets() {
+    async function fetchData() {
       try {
-        const res = await apiRequest("/wallets", { method: "GET" });
-        if (res?.status === "success" && Array.isArray(res.data)) {
-          setWallets(res.data);
+        const walletsRes = await apiRequest("/wallets", { method: "GET" });
+        if (walletsRes?.status === "success" && Array.isArray(walletsRes.data)) {
+          setWallets(walletsRes.data);
         }
       } catch (error) {
         console.error("Gagal memuat dompet:", error);
       }
+      try {
+        const categoriesRes = await apiRequest("/categories", { method: "GET" });
+        if (categoriesRes?.status === "success" && Array.isArray(categoriesRes.data)) {
+          setCategories(categoriesRes.data);
+
+          // Find the default predicted category
+          let defaultCat = null;
+          const targetId = splitSession?.category_id;
+          const targetName = splitSession?.category_name?.toLowerCase();
+
+          if (targetId) {
+            defaultCat = categoriesRes.data.find(
+              (c: any) => (c._id || c.id) === targetId
+            );
+          }
+          if (!defaultCat && targetName) {
+            defaultCat = categoriesRes.data.find(
+              (c: any) =>
+                c.name?.toLowerCase() === targetName ||
+                c.slug?.toLowerCase() === targetName
+            );
+          }
+          if (!defaultCat && categoriesRes.data.length > 0) {
+            defaultCat = categoriesRes.data[0];
+          }
+          setSelectedCategory(defaultCat);
+        }
+      } catch (error) {
+        console.error("Gagal memuat kategori:", error);
+      }
     }
 
-    fetchWallets();
-  }, []);
+    fetchData();
+  }, [splitSession]);
 
   // Logic confirm
   const canConfirm = !isRecordTransaction || selectedWallet !== null;
 
   const openWalletSheet = () => bottomSheetRef.current?.expand();
-
-  const splitSession = getSplitSession();
+  const openCategorySheet = () => categoryBottomSheetRef.current?.expand();
+  const closeCategorySheet = () => categoryBottomSheetRef.current?.close();
   const summaryData = useMemo(
     () =>
       splitSession
@@ -81,19 +118,53 @@ export default function SakuSummary() {
   const handleConfirm = async () => {
     if (isRecordTransaction && selectedWallet) {
       try {
+        // Resolve category_id dynamically from state or fallback
+        let resolvedCategoryId = selectedCategory?._id || selectedCategory?.id;
+        
+        if (!resolvedCategoryId) {
+          resolvedCategoryId = splitSession?.category_id;
+          
+          // Check if the resolvedCategoryId is a valid category ID in the user's category list
+          const categoryExists = categories.some(
+            (c) => (c._id || c.id) === resolvedCategoryId
+          );
+
+          if (!resolvedCategoryId || !categoryExists) {
+            // Match by name or slug (case-insensitive)
+            const ocrCategoryName = splitSession?.category_name?.toLowerCase();
+            const matchedCategory = categories.find(
+              (c) =>
+                c.name?.toLowerCase() === ocrCategoryName ||
+                c.slug?.toLowerCase() === ocrCategoryName
+            );
+
+            if (matchedCategory) {
+              resolvedCategoryId = matchedCategory._id || matchedCategory.id;
+            } else if (categories.length > 0) {
+              // Fallback to first available category
+              resolvedCategoryId = categories[0]._id || categories[0].id;
+            } else {
+              // Ultimate fallback if categories list is completely empty
+              resolvedCategoryId = "69a99efab5420796db171e00";
+            }
+          }
+        }
+
         const payload = {
-          category_id: splitSession?.category_id || "69a99efab5420796db171e00",
+          category_id: resolvedCategoryId,
           wallet_id: selectedWallet._id || selectedWallet.id,
           amount: String(summaryData.amount),
           type: "expense",
-          name: splitSession?.description ? splitSession.description.substring(0, 30) : "Scan SakuSnap",
+          name: splitSession?.description
+            ? splitSession.description.substring(0, 30)
+            : "Scan SakuSnap",
           description: splitSession?.description || "Pembelian dari SakuSnap",
           date: splitSession?.date || new Date().toISOString().split("T")[0],
-          input_method: "snap"
+          input_method: "snap",
         };
         await apiRequest("/transaction", {
           method: "POST",
-          body: payload
+          body: payload,
         });
       } catch (err) {
         console.error("Gagal menyimpan transaksi setelah ocr:", err);
@@ -175,6 +246,46 @@ export default function SakuSummary() {
                   </Text>
                 </View>
               ))}
+            </View>
+          </View>
+
+          {/* Category */}
+          <View className="mb-8">
+            <View className="px-5 mb-3">
+              <Text className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
+                Kategori
+              </Text>
+            </View>
+
+            <View className="bg-white border-y border-gray-100">
+              <TouchableOpacity
+                onPress={openCategorySheet}
+                className="flex-row items-center justify-between px-5 py-4"
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className="w-11 h-11 rounded-2xl bg-[#f3f4f6] items-center justify-center">
+                    {selectedCategory ? (
+                      <Text className="text-xl">{selectedCategory.emoticon}</Text>
+                    ) : (
+                      <Tag size={18} color="#111827" />
+                    )}
+                  </View>
+
+                  <View className="ml-4 flex-1">
+                    <Text className="text-[#111827] text-[15px] font-medium">
+                      {selectedCategory ? selectedCategory.name : "Pilih Kategori"}
+                    </Text>
+
+                    <Text className="text-gray-500 text-xs mt-1">
+                      {selectedCategory
+                        ? "Kategori transaksi split bill"
+                        : "Belum ada kategori dipilih"}
+                    </Text>
+                  </View>
+                </View>
+
+                <ArrowRight size={18} color="#9ca3af" />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -285,6 +396,17 @@ export default function SakuSummary() {
           onSelect={(item) => {
             setSelectedWallet(item);
             bottomSheetRef.current?.close();
+          }}
+        />
+
+        {/* Category Bottom Sheet */}
+        <CategoryBottomSheet
+          ref={categoryBottomSheetRef}
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelect={(item) => {
+            setSelectedCategory(item);
+            closeCategorySheet();
           }}
         />
       </SafeAreaView>

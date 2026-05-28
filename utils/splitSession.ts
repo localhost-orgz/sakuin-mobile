@@ -17,9 +17,11 @@ export type SplitSession = {
   /** Participant ids assigned to each item index */
   assignedProducts: string[][];
   category_id?: string;
+  category_name?: string;
   description?: string;
   date?: string;
 };
+
 
 export type ParticipantBillItem = {
   name: string;

@@ -173,6 +173,7 @@ export default function SakuResult() {
                     amount: result.amount,
                     items: result.items,
                     category_id: result.category_id,
+                    category_name: result.category_name,
                     description: result.description,
                     date: result.date,
                     participants: [{ id: "me", name: "Me" }],

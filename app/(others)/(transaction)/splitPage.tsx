@@ -133,6 +133,10 @@ export default function SakuSplit() {
       items: strukData.items,
       participants,
       assignedProducts,
+      category_id: initialSession?.category_id,
+      category_name: initialSession?.category_name,
+      description: initialSession?.description,
+      date: initialSession?.date,
     });
     router.push("/(others)/(transaction)/summarySplit");
   };
