@@ -44,7 +44,8 @@
       [
         "@react-native-voice/voice",
         {
-          "microphonePermission": "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu."
+          "microphonePermission": "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu.",
+          "speechRecognitionPermission": "Sakuin memerlukan akses pengenalan suara untuk mengubah ucapan menjadi teks transaksi."
         }
       ],
       "@react-native-community/datetimepicker",

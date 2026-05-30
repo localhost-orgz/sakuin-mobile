@@ -27,8 +27,8 @@ const CurrentGoals = ({ goalsList, loading }: CurrentGoalsProps) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 14, paddingRight: 4 }}
         >
-          <CardGoalsSkeleton />
-          <CardGoalsSkeleton />
+          <CardGoalsSkeleton key="skeleton-1" />
+          <CardGoalsSkeleton key="skeleton-2" />
         </ScrollView>
       </View>
     );

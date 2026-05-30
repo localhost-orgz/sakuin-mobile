@@ -7,6 +7,7 @@ const CardGoals = ({ goal }: any) => {
   const isCompleted = percentage >= 100;
 
   const formatAmount = (amount: number): string => {
+    if (amount === undefined || amount === null) return "0";
     if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}Jt`;
     if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
     return amount.toString();
