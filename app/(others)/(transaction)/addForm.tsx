@@ -25,7 +25,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransaction() {
-  const { walletId } = useLocalSearchParams<{ walletId?: string }>();
+  // Ambil data param autofill yang dikirim dari halaman SakuVoice
+  const { walletId, autofill } = useLocalSearchParams<{ walletId?: string; autofill?: string }>();
   const [transactionType, setTransactionType] = useState("expense");
   const [amount, setAmount] = useState(""); // Nilai awal string kosong agar placeholder muncul
   const [date, setDate] = useState(new Date());
@@ -57,8 +58,12 @@ export default function AddTransaction() {
         const walletsRes = await apiRequest("/wallets", { method: "GET" });
         const profileRes = await apiRequest("/auth/profile", { method: "GET" });
 
+        let currentCategories = [];
+        let currentWallets = [];
+
         if (categoriesRes?.status === "success") {
           setCategories(categoriesRes.data);
+          currentCategories = categoriesRes.data;
           if (categoriesRes.data.length > 0) {
             setSelectedCategory(categoriesRes.data[0]);
           }
@@ -66,6 +71,7 @@ export default function AddTransaction() {
 
         if (walletsRes?.status === "success") {
           setWallets(walletsRes.data);
+          currentWallets = walletsRes.data;
           if (walletsRes.data.length > 0) {
             // Preselect wallet if walletId matches
             const preselectedWallet = walletsRes.data.find(
@@ -83,15 +89,51 @@ export default function AddTransaction() {
             setSelectedCurrency(matched);
           }
         }
+
+        // --- PROSES AUTOFILL JIKA DATA DARI SAKUVOICE TERSEDIA ---
+        if (autofill) {
+          try {
+            const parsedData = JSON.parse(autofill);
+            
+            if (parsedData.name) setName(parsedData.name);
+            if (parsedData.description) setDescription(parsedData.description);
+            if (parsedData.type) setTransactionType(parsedData.type);
+            if (parsedData.date) setDate(new Date(parsedData.date));
+            
+            if (parsedData.amount) {
+              const formattedAmount = formatCurrencyInput(parsedData.amount.toString());
+              setAmount(formattedAmount);
+            }
+
+            if (parsedData.currency) {
+              const matchedCurrency = CURRENCY_LIST.find((c) => c.code === parsedData.currency);
+              if (matchedCurrency) setSelectedCurrency(matchedCurrency);
+            }
+
+            if (parsedData.category_id && currentCategories.length > 0) {
+              const matchedCat = currentCategories.find((c: any) => (c._id || c.id) === parsedData.category_id);
+              if (matchedCat) setSelectedCategory(matchedCat);
+            }
+
+            if (parsedData.wallet_id && currentWallets.length > 0) {
+              const matchedWall = currentWallets.find((w: any) => (w._id || w.id) === parsedData.wallet_id);
+              if (matchedWall) setSelectedWallet(matchedWall);
+            }
+          } catch (jsonErr) {
+            console.error("Gagal melakukan autofill data:", jsonErr);
+          }
+        }
+        // --------------------------------------------------------
+
       } catch (error) {
-        console.error("Gagal memuat data kategori, wallet, atau profil:", error);
+        console.error("Gagal membuat data kategori, wallet, atau profil:", error);
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [walletId]);
+  }, [walletId, autofill]);
 
   // -- helper format tanggal untuk tampilan UI
   const formatDate = (d: Date) => {
@@ -228,7 +270,7 @@ export default function AddTransaction() {
           <View className="flex-row items-center justify-between py-4">
             <TouchableOpacity onPress={() => router.back()} className="z-10">
               <Text className="text-[#00bf71] font-semibold text-base">
-                ← Back
+                {`← Back`}
               </Text>
             </TouchableOpacity>
             <View className="absolute left-0 right-0 items-center justify-center">

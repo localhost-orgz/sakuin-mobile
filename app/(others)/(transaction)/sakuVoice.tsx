@@ -1,3 +1,5 @@
+import { apiRequest } from "@/utils/api";
+import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import { ChevronLeft, HelpCircle } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -23,9 +25,6 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
-
-// Import library Speech Recognition Native
-import Voice, { SpeechResultsEvent, SpeechErrorEvent } from "@react-native-voice/voice";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -218,12 +217,14 @@ export default function SakuVoice() {
   const [isDone, setIsDone] = useState(false);
   const [words, setWords] = useState<string[]>([]);
   const [amplitude, setAmplitude] = useState(0);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
 
   const btnScale = useRef(new Animated.Value(1)).current;
   const recognitionRef = useRef<any>(null);
 
-  // Initialize SpeechRecognition listeners
+  // Initialize SpeechRecognition for Web
   useEffect(() => {
     if (Platform.OS === "web") {
       const SpeechRecognition =
@@ -258,48 +259,17 @@ export default function SakuVoice() {
 
         recognitionRef.current = rec;
       }
-    } else {
-      // Bind native listeners untuk Android/iOS
-      Voice.onSpeechStart = () => {
-        setIsRecording(true);
-        setIsTranscribing(false);
-      };
-      Voice.onSpeechEnd = () => {
-        setIsRecording(false);
-        setIsTranscribing(true);
-      };
-      Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-        if (e.value && e.value[0]) {
-          const transcript = e.value[0];
-          console.log("Native Speech transcript:", transcript);
-          setWords(transcript.trim().split(" "));
-          setIsDone(true);
-        }
-        setIsTranscribing(false);
-      };
-      Voice.onSpeechError = (e: SpeechErrorEvent) => {
-        console.error("Native Speech error:", e.error);
-        setIsRecording(false);
-        setIsTranscribing(false);
-        if (e.error?.message !== "7" && e.error?.message !== "No match") {
-          Alert.alert("Error", "Gagal mengenali suara atau mikrofon tidak diizinkan.");
-        }
-      };
-      Voice.onSpeechVolumeChanged = (e: any) => {
-        if (e.value !== undefined) {
-          // Normalisasi volume native (0-10 atau desibel) ke range 0..1 untuk animasi blob
-          const normalized = Math.min(Math.max(e.value / 10, 0), 1);
-          setAmplitude(normalized);
-        }
-      };
     }
+  }, []);
 
+  // Clean up recording on unmount
+  useEffect(() => {
     return () => {
-      if (Platform.OS !== "web") {
-        Voice.destroy().then(Voice.removeAllListeners);
+      if (recording) {
+        recording.stopAndUnloadAsync().catch(() => {});
       }
     };
-  }, []);
+  }, [recording]);
 
   const pressBtn = () => {
     Animated.sequence([
@@ -315,6 +285,58 @@ export default function SakuVoice() {
         useNativeDriver: true,
       }),
     ]).start();
+  };
+
+  const transcribeAudio = async (localUri: string): Promise<string | null> => {
+    try {
+      setIsTranscribing(true);
+
+      // 1. Siapkan FormData pembungkus file audio
+      const formData = new FormData();
+      
+      // Menggunakan type audio/mpeg (mp3) agar kompatibel secara global dengan middleware backend
+      formData.append("voice", {
+        uri: localUri,
+        type: "audio/m4a", 
+        name: "sakuvoice_recording.m4a",
+      } as any);
+
+      console.log("Mengirim file audio ke /ai/sakuvoice menggunakan apiRequest (isFormData: true)...");
+      console.log(formData);
+
+      // 2. Panggil apiRequest dengan menyertakan flag isFormData: true
+      const response = await apiRequest("/ai/sakuvoice", {
+        method: "POST",
+        body: formData,
+        isFormData: true, // <--- INI KUNCI UTAMANYA AGAR FILE BERHASIL TERKIRIM!
+      });
+
+      // 3. Sesuaikan dengan struktur response sukses dari backend controller Anda
+      if (response && response.status === "success") {
+        console.log("Respon backend sukses:", response.message);
+        
+        if (response.data) {
+          // Simpan objek data utuh dari AI ke state
+          setExtractedData(response.data); 
+          
+          // Ambil deskripsi teks untuk ditampilkan di chip jika ada, 
+          // atau gunakan deskripsi bawaan dari AI
+          const textResult = response.data.description || "Transaksi terdeteksi";
+          return textResult;
+        }
+        return "Data suara berhasil diproses";
+      }
+
+    } catch (error) {
+      console.error("Gagal memproses audio via apiRequest:", error);
+      Alert.alert(
+        "SakuVoice Gagal",
+        (error as Error).message || "Terjadi kendala saat mengirim atau memproses suara di server."
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+    return null;
   };
 
   const startRecording = async () => {
@@ -341,11 +363,42 @@ export default function SakuVoice() {
     }
 
     try {
-      // Memulai speech recognition native dengan bahasa Indonesia
-      await Voice.start("id-ID");
+      // Request permission
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Izin Mikrofon Diperlukan",
+          "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu.",
+        );
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        {
+          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+          keepConnectionAlive: true,
+        } as any,
+        (status) => {
+          if (status.metering !== undefined) {
+            // Normalisasi metering (-160 s/d 0 dB) ke rentang 0..1
+            const db = status.metering;
+            const normalized = Math.min(Math.max((db + 60) / 60, 0), 1);
+            setAmplitude(normalized);
+          }
+        },
+        100,
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
     } catch (error) {
-      console.error("Gagal memulai perekaman suara native: ", error);
-      Alert.alert("Error", "Gagal mengakses mikrofon atau memulai pengenalan suara.");
+      console.error("Gagal memulai perekaman suara: ", error);
+      Alert.alert("Error", "Gagal mengakses mikrofon atau memulai perekaman.");
     }
   };
 
@@ -360,10 +413,33 @@ export default function SakuVoice() {
     }
 
     try {
-      setIsTranscribing(true);
-      await Voice.stop();
+      if (recording) {
+        setIsTranscribing(true);
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI();
+        console.log("Audio recorded to:", uri);
+
+        setRecording(null);
+        setIsRecording(false);
+
+        if (uri) {
+          const text = await transcribeAudio(uri);
+          if (text) {
+            setWords(text.trim().split(" "));
+            setIsDone(true);
+            Alert.alert("Speech to Text Result", `Hasil suara: "${text}"`);
+          } else {
+            setIsDone(true);
+            Alert.alert(
+              "Speech to Text",
+              "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah.",
+            );
+          }
+        }
+      }
     } catch (error) {
-      console.error("Gagal menghentikan perekaman suara native: ", error);
+      console.error("Gagal menghentikan perekaman suara: ", error);
+    } finally {
       setIsTranscribing(false);
     }
   };
@@ -371,13 +447,11 @@ export default function SakuVoice() {
   const reset = async () => {
     pressBtn();
     try {
-      if (Platform.OS !== "web") {
-        await Voice.cancel();
-      } else if (recognitionRef.current) {
-        recognitionRef.current.stop();
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        setRecording(null);
       }
       setIsRecording(false);
-      setIsTranscribing(false);
       setIsDone(false);
       setWords([]);
       setAmplitude(0);
@@ -388,7 +462,17 @@ export default function SakuVoice() {
 
   const confirm = () => {
     pressBtn();
-    router.back();
+  
+    if (extractedData) {
+      router.push({
+        pathname: "/(others)/(transaction)/addForm",
+        params: {
+          autofill: JSON.stringify(extractedData)
+        }
+      });
+    } else {
+      router.back();
+    }
   };
 
   const BASE_RADIUS = SW * 0.35;
