@@ -5,6 +5,7 @@ import HomeSectionHeader from "./HomeSectionHeader";
 
 interface GoalItem {
   id: string | number;
+  _id?: string;
   name: string;
   icon: string;
   current: number;
@@ -44,7 +45,7 @@ const CurrentGoals = ({ goalsList, loading }: CurrentGoalsProps) => {
         contentContainerStyle={{ gap: 14, paddingRight: 4 }}
       >
         {goalsList.map((goal) => {
-          return <CardGoals key={goal.id} goal={goal} />;
+          return <CardGoals key={goal.id || goal._id} goal={goal} />;
         })}
       </ScrollView>
     </View>

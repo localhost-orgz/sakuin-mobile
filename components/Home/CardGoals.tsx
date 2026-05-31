@@ -17,7 +17,7 @@ const CardGoals = ({ goal }: any) => {
 
   return (
     <TouchableOpacity
-      key={goal.id}
+      key={goal.id || goal._id}
       activeOpacity={0.8}
       style={{
         width: 250,
