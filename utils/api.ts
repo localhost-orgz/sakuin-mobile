@@ -47,10 +47,10 @@ async function handleOfflineFallback(endpoint: string, method: string, body: any
     const newGoal = {
       id: uuid(),
       name: body.name,
-      icon: body.icon || "🎯",
-      current: Number(body.current) || 0,
-      target: Number(body.target) || 100000,
-      themeId: body.themeId || "ocean",
+      icon: body.icon || body.emoticon || "🎯",
+      current: Number(body.current) || Number(body.current_amount) || 0,
+      target: Number(body.target) || Number(body.target_amount) || 100000,
+      themeId: body.themeId || body.color || "ocean",
       deadline: body.deadline || "30 Dec 2026",
       description: body.description || ""
     };
@@ -68,7 +68,14 @@ async function handleOfflineFallback(endpoint: string, method: string, body: any
   if (method === "PUT" && idParam && body) {
     const updated = goals.map((g: any) => {
       if (g.id === idParam || g._id === idParam) {
-        return { ...g, ...body };
+        return { 
+          ...g, 
+          ...body,
+          icon: body.icon || body.emoticon || g.icon,
+          current: body.current !== undefined ? body.current : (body.current_amount !== undefined ? body.current_amount : g.current),
+          target: body.target !== undefined ? body.target : (body.target_amount !== undefined ? body.target_amount : g.target),
+          themeId: body.themeId || body.color || g.themeId,
+        };
       }
       return g;
     });
@@ -103,7 +110,26 @@ export async function apiRequest(endpoint: string, {
    }
 
    const options: RequestInit = { method, headers };
-   if (body) options.body = isFormData ? body : JSON.stringify(body);
+   if (body) {
+      let finalBody = body;
+      if (isGoals && !isFormData) {
+         // Map frontend fields to backend expected fields
+         finalBody = {
+            name: body.name,
+            emoticon: body.emoticon || body.icon,
+            target_amount: body.target_amount !== undefined ? body.target_amount : body.target,
+            color: body.color || body.themeId,
+            current_amount: body.current_amount !== undefined ? body.current_amount : body.current,
+         };
+         // Clear undefined fields
+         Object.keys(finalBody).forEach(key => {
+            if (finalBody[key] === undefined) {
+               delete finalBody[key];
+            }
+         });
+      }
+      options.body = isFormData ? finalBody : JSON.stringify(finalBody);
+   }
 
    try {
       const res = await fetch(url, options);
@@ -126,6 +152,25 @@ export async function apiRequest(endpoint: string, {
             router.replace("/(auth)/welcome");
          }
          throw new Error(data.message || "Request failed");
+      }
+
+      // Map incoming backend fields to frontend expected fields
+      if (isGoals && data && data.status === "success" && data.data) {
+         const mapGoal = (g: any) => {
+            if (!g) return g;
+            return {
+               ...g,
+               icon: g.icon || g.emoticon,
+               target: g.target !== undefined ? g.target : g.target_amount,
+               themeId: g.themeId || g.color,
+               current: g.current !== undefined ? g.current : (g.current_amount !== undefined ? g.current_amount : 0),
+            };
+         };
+         if (Array.isArray(data.data)) {
+            data.data = data.data.map(mapGoal);
+         } else {
+            data.data = mapGoal(data.data);
+         }
       }
 
       return data;

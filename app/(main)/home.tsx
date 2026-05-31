@@ -17,7 +17,6 @@ import {
   ScrollableTopContent,
 } from "@/components/Home/TopSection";
 import TopSpendCategory from "@/components/Home/TopSpendCategory";
-import { CURRENT_GOALS } from "@/constants/goalsList";
 import { useFocusEffect } from "expo-router";
 import { apiRequest } from "@/utils/api";
 import * as SecureStore from "expo-secure-store";

@@ -10,8 +10,8 @@ import {
   ChevronLeft,
   Circle,
   Info,
-  Wallet,
   Tag,
+  Wallet,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -52,15 +52,23 @@ export default function SakuSummary() {
     async function fetchData() {
       try {
         const walletsRes = await apiRequest("/wallets", { method: "GET" });
-        if (walletsRes?.status === "success" && Array.isArray(walletsRes.data)) {
+        if (
+          walletsRes?.status === "success" &&
+          Array.isArray(walletsRes.data)
+        ) {
           setWallets(walletsRes.data);
         }
       } catch (error) {
         console.error("Gagal memuat dompet:", error);
       }
       try {
-        const categoriesRes = await apiRequest("/categories", { method: "GET" });
-        if (categoriesRes?.status === "success" && Array.isArray(categoriesRes.data)) {
+        const categoriesRes = await apiRequest("/categories", {
+          method: "GET",
+        });
+        if (
+          categoriesRes?.status === "success" &&
+          Array.isArray(categoriesRes.data)
+        ) {
           setCategories(categoriesRes.data);
 
           // Find the default predicted category
@@ -70,14 +78,14 @@ export default function SakuSummary() {
 
           if (targetId) {
             defaultCat = categoriesRes.data.find(
-              (c: any) => (c._id || c.id) === targetId
+              (c: any) => (c._id || c.id) === targetId,
             );
           }
           if (!defaultCat && targetName) {
             defaultCat = categoriesRes.data.find(
               (c: any) =>
                 c.name?.toLowerCase() === targetName ||
-                c.slug?.toLowerCase() === targetName
+                c.slug?.toLowerCase() === targetName,
             );
           }
           if (!defaultCat && categoriesRes.data.length > 0) {
@@ -120,13 +128,13 @@ export default function SakuSummary() {
       try {
         // Resolve category_id dynamically from state or fallback
         let resolvedCategoryId = selectedCategory?._id || selectedCategory?.id;
-        
+
         if (!resolvedCategoryId) {
           resolvedCategoryId = splitSession?.category_id;
-          
+
           // Check if the resolvedCategoryId is a valid category ID in the user's category list
           const categoryExists = categories.some(
-            (c) => (c._id || c.id) === resolvedCategoryId
+            (c) => (c._id || c.id) === resolvedCategoryId,
           );
 
           if (!resolvedCategoryId || !categoryExists) {
@@ -135,7 +143,7 @@ export default function SakuSummary() {
             const matchedCategory = categories.find(
               (c) =>
                 c.name?.toLowerCase() === ocrCategoryName ||
-                c.slug?.toLowerCase() === ocrCategoryName
+                c.slug?.toLowerCase() === ocrCategoryName,
             );
 
             if (matchedCategory) {
@@ -145,7 +153,7 @@ export default function SakuSummary() {
               resolvedCategoryId = categories[0]._id || categories[0].id;
             } else {
               // Ultimate fallback if categories list is completely empty
-              resolvedCategoryId = "69a99efab5420796db171e00";
+              resolvedCategoryId = "asdf";
             }
           }
         }
@@ -160,14 +168,19 @@ export default function SakuSummary() {
             : "Scan SakuSnap",
           description: splitSession?.description || "Pembelian dari SakuSnap",
           date: splitSession?.date || new Date().toISOString().split("T")[0],
-          input_method: "snap",
+          input_method: "sakusnap",
+          currency: "IDR",
         };
+        console.log(resolvedCategoryId);
         await apiRequest("/transaction", {
           method: "POST",
           body: payload,
         });
       } catch (err) {
-        console.error("Gagal menyimpan transaksi setelah ocr:", err);
+        console.error(
+          "Gagal menyimpan transaksi setelah ocr:",
+          splitSession?.date,
+        );
       }
     }
     router.push("/(others)/(transaction)/participantBills");
@@ -265,7 +278,9 @@ export default function SakuSummary() {
                 <View className="flex-row items-center flex-1">
                   <View className="w-11 h-11 rounded-2xl bg-[#f3f4f6] items-center justify-center">
                     {selectedCategory ? (
-                      <Text className="text-xl">{selectedCategory.emoticon}</Text>
+                      <Text className="text-xl">
+                        {selectedCategory.emoticon}
+                      </Text>
                     ) : (
                       <Tag size={18} color="#111827" />
                     )}
@@ -273,7 +288,9 @@ export default function SakuSummary() {
 
                   <View className="ml-4 flex-1">
                     <Text className="text-[#111827] text-[15px] font-medium">
-                      {selectedCategory ? selectedCategory.name : "Pilih Kategori"}
+                      {selectedCategory
+                        ? selectedCategory.name
+                        : "Pilih Kategori"}
                     </Text>
 
                     <Text className="text-gray-500 text-xs mt-1">

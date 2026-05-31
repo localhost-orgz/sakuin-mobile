@@ -1,11 +1,10 @@
 import { Skeleton } from "@/components/Skeleton";
-import { CURRENT_GOALS } from "@/constants/goalsList";
 import { WALLET_LIST } from "@/constants/walletList";
 import { Eye, EyeOff, Target, Wallet } from "lucide-react-native";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
-const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [], loading }: any) => {
+const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [], goals = [], loading }: any) => {
   if (loading) {
     return (
       <View
@@ -93,10 +92,10 @@ const TotalBalance = ({ isBalanceShow, onBalanceShow, wallets = [], loading }: a
 
   const formattedBalance = new Intl.NumberFormat("id-ID").format(totalAmount);
 
-  const completedGoals = CURRENT_GOALS.filter(
+  const completedGoals = goals.filter(
     (g: any) => g.current >= g.target,
   ).length;
-  const totalGoals = CURRENT_GOALS.length;
+  const totalGoals = goals.length;
   const goalsPercent = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
 
   return (

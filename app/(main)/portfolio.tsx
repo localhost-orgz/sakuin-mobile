@@ -63,6 +63,7 @@ export default function PortfolioScreen() {
         isBalanceShow={isBalanceShow}
         onBalanceShow={setIsBalanceShow}
         wallets={wallets}
+        goals={goals}
         loading={loading}
       />
 
