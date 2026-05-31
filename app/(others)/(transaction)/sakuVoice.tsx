@@ -1,20 +1,21 @@
 import { apiRequest } from "@/utils/api";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
-import { ChevronLeft, HelpCircle } from "lucide-react-native";
+import { ChevronLeft, HelpCircle, CheckCircle2, AlertCircle, XCircle } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   Easing,
+  Modal,
   Platform,
   Pressable,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -215,7 +216,7 @@ export default function SakuVoice() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const [words, setWords] = useState<string[]>([]);
+  const [transcript, setTranscript] = useState("");
   const [amplitude, setAmplitude] = useState(0);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -223,6 +224,18 @@ export default function SakuVoice() {
 
   const btnScale = useRef(new Animated.Value(1)).current;
   const recognitionRef = useRef<any>(null);
+
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    type: "success" | "error" | "info" | "warning";
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
 
   // Initialize SpeechRecognition for Web
   useEffect(() => {
@@ -237,15 +250,17 @@ export default function SakuVoice() {
         rec.lang = "id-ID";
 
         rec.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          console.log("Web Speech transcript:", transcript);
-          if (transcript) {
-            setWords(transcript.trim().split(" "));
+          const text = event.results[0][0].transcript;
+          console.log("Web Speech transcript:", text);
+          if (text) {
+            setTranscript(text.trim());
             setIsDone(true);
-            Alert.alert(
-              "Speech to Text Result",
-              `Hasil suara: "${transcript}"`,
-            );
+            setCustomAlert({
+              visible: true,
+              type: "success",
+              title: "Transkripsi Berhasil",
+              message: `Hasil suara: "${text}"`,
+            });
           }
         };
 
@@ -329,10 +344,12 @@ export default function SakuVoice() {
 
     } catch (error) {
       console.error("Gagal memproses audio via apiRequest:", error);
-      Alert.alert(
-        "SakuVoice Gagal",
-        (error as Error).message || "Terjadi kendala saat mengirim atau memproses suara di server."
-      );
+      setCustomAlert({
+        visible: true,
+        type: "error",
+        title: "SakuVoice Gagal",
+        message: (error as Error).message || "Terjadi kendala saat mengirim atau memproses suara di server.",
+      });
     } finally {
       setIsTranscribing(false);
     }
@@ -341,7 +358,7 @@ export default function SakuVoice() {
 
   const startRecording = async () => {
     pressBtn();
-    setWords([]);
+    setTranscript("");
     setAmplitude(0);
     setIsDone(false);
 
@@ -354,10 +371,12 @@ export default function SakuVoice() {
           console.error("Failed to start web recognition:", err);
         }
       } else {
-        Alert.alert(
-          "Error",
-          "Speech recognition tidak didukung di browser ini.",
-        );
+        setCustomAlert({
+          visible: true,
+          type: "error",
+          title: "Error",
+          message: "Speech recognition tidak didukung di browser ini.",
+        });
       }
       return;
     }
@@ -366,10 +385,12 @@ export default function SakuVoice() {
       // Request permission
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== "granted") {
-        Alert.alert(
-          "Izin Mikrofon Diperlukan",
-          "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu.",
-        );
+        setCustomAlert({
+          visible: true,
+          type: "warning",
+          title: "Izin Mikrofon Diperlukan",
+          message: "Sakuin memerlukan akses mic untuk fitur voice-to-text transaksi kamu.",
+        });
         return;
       }
 
@@ -398,7 +419,12 @@ export default function SakuVoice() {
       setIsRecording(true);
     } catch (error) {
       console.error("Gagal memulai perekaman suara: ", error);
-      Alert.alert("Error", "Gagal mengakses mikrofon atau memulai perekaman.");
+      setCustomAlert({
+        visible: true,
+        type: "error",
+        title: "Error",
+        message: "Gagal mengakses mikrofon atau memulai perekaman.",
+      });
     }
   };
 
@@ -425,15 +451,22 @@ export default function SakuVoice() {
         if (uri) {
           const text = await transcribeAudio(uri);
           if (text) {
-            setWords(text.trim().split(" "));
+            setTranscript(text.trim());
             setIsDone(true);
-            Alert.alert("Speech to Text Result", `Hasil suara: "${text}"`);
+            setCustomAlert({
+              visible: true,
+              type: "success",
+              title: "Transkripsi Berhasil",
+              message: `Hasil suara: "${text}"`,
+            });
           } else {
             setIsDone(true);
-            Alert.alert(
-              "Speech to Text",
-              "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah.",
-            );
+            setCustomAlert({
+              visible: true,
+              type: "error",
+              title: "Transkripsi Gagal",
+              message: "Gagal mengubah suara secara otomatis. Silakan gunakan input manual di bawah.",
+            });
           }
         }
       }
@@ -445,7 +478,6 @@ export default function SakuVoice() {
   };
 
   const reset = async () => {
-    pressBtn();
     try {
       if (recording) {
         await recording.stopAndUnloadAsync();
@@ -453,7 +485,7 @@ export default function SakuVoice() {
       }
       setIsRecording(false);
       setIsDone(false);
-      setWords([]);
+      setTranscript("");
       setAmplitude(0);
     } catch (error) {
       console.error("Gagal mereset perekaman: ", error);
@@ -461,8 +493,6 @@ export default function SakuVoice() {
   };
 
   const confirm = () => {
-    pressBtn();
-  
     if (extractedData) {
       router.push({
         pathname: "/(others)/(transaction)/addForm",
@@ -472,6 +502,49 @@ export default function SakuVoice() {
       });
     } else {
       router.back();
+    }
+  };
+
+  // Render alert icon based on type
+  const renderAlertIcon = () => {
+    const iconSize = 28;
+    switch (customAlert.type) {
+      case "success":
+        return <CheckCircle2 size={iconSize} color="#10b981" />;
+      case "error":
+        return <XCircle size={iconSize} color="#ef4444" />;
+      case "warning":
+        return <AlertCircle size={iconSize} color="#f59e0b" />;
+      default:
+        return <MicIcon size={iconSize} color={GREEN} />;
+    }
+  };
+
+  // Get icon background color based on type
+  const getIconBgColor = () => {
+    switch (customAlert.type) {
+      case "success":
+        return "#ecfdf5";
+      case "error":
+        return "#fef2f2";
+      case "warning":
+        return "#fffbeb";
+      default:
+        return `${GREEN}15`;
+    }
+  };
+
+  // Get button color based on type
+  const getBtnColor = () => {
+    switch (customAlert.type) {
+      case "success":
+        return "#10b981";
+      case "error":
+        return "#ef4444";
+      case "warning":
+        return "#f59e0b";
+      default:
+        return GREEN;
     }
   };
 
@@ -593,7 +666,7 @@ export default function SakuVoice() {
         </View>
       </View>
 
-      {/* ── Transcript chips ── */}
+      {/* ── Transcript Text Area ── */}
       <View
         style={{
           flex: 1,
@@ -603,90 +676,24 @@ export default function SakuVoice() {
           width: "100%",
         }}
       >
-        {words.length > 0 ? (
+        {!isRecording && !isTranscribing ? (
           <View style={{ width: "100%", alignItems: "center" }}>
-            <View style={styles.chipsRow}>
-              {words.map((w, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.chip,
-                    i === words.length - 1 && isRecording && styles.chipActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      i === words.length - 1 &&
-                        isRecording && { color: GREEN_DARK },
-                    ]}
-                  >
-                    {w}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* TextInput to edit/review manual transcription */}
-            {!isRecording && !isTranscribing && (
-              <TextInput
-                value={words.join(" ")}
-                onChangeText={(txt) => setWords(txt.split(" "))}
-                placeholder="Edit hasil transkripsi..."
-                placeholderTextColor="#9ca3af"
-                style={{
-                  width: "90%",
-                  backgroundColor: "white",
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: "#e5e7eb",
-                  fontSize: 15,
-                  color: "#1f2937",
-                  textAlign: "center",
-                  marginTop: 20,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              />
-            )}
+            <TextInput
+              multiline={true}
+              numberOfLines={4}
+              textAlignVertical="top"
+              value={transcript}
+              onChangeText={setTranscript}
+              placeholder='Coba ucapkan: "Makan siang 50 ribu" atau ketik manual...'
+              placeholderTextColor="#9ca3af"
+              style={styles.textArea}
+            />
           </View>
         ) : (
-          <View style={{ width: "100%", alignItems: "center" }}>
-            <Text style={styles.hint}>
-              {isRecording ? "" : 'Coba ucapkan: "Makan siang 50 ribu"'}
+          <View style={{ width: "100%", alignItems: "center", padding: 16 }}>
+            <Text style={styles.liveTranscriptText}>
+              {transcript ? transcript : (isTranscribing ? "Memproses suara..." : "Mendengarkan suara...")}
             </Text>
-
-            {/* Fallback input field if they want to type manually from start */}
-            {!isRecording && !isTranscribing && (
-              <TextInput
-                onChangeText={(txt) => setWords(txt.split(" "))}
-                placeholder="Atau ketik manual di sini..."
-                placeholderTextColor="#9ca3af"
-                style={{
-                  width: "90%",
-                  backgroundColor: "white",
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: "#e5e7eb",
-                  fontSize: 15,
-                  color: "#1f2937",
-                  textAlign: "center",
-                  marginTop: 20,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              />
-            )}
           </View>
         )}
       </View>
@@ -698,13 +705,14 @@ export default function SakuVoice() {
           paddingHorizontal: 40,
           alignItems: "center",
           gap: 20,
+          zIndex: 5,
         }}
       >
         {/* Main mic button */}
-        <View style={{ alignItems: "center", justifyContent: "center" }}>
+        <View style={{ alignItems: "center", justifyContent: "center", zIndex: 1 }}>
           <PulseRings active={isRecording} />
 
-          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+          <Animated.View style={{ transform: [{ scale: btnScale }], zIndex: 1 }}>
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
               style={[
@@ -723,25 +731,58 @@ export default function SakuVoice() {
 
         {/* Confirm / Reset row */}
         {isDone && (
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable onPress={reset} style={styles.secondaryBtn}>
+          <View style={{ flexDirection: "row", gap: 12, zIndex: 999, elevation: 15 }}>
+            <TouchableOpacity 
+              onPress={reset} 
+              style={styles.secondaryBtn}
+              activeOpacity={0.7}
+            >
               <Text style={styles.secondaryBtnText}>Ulangi</Text>
-            </Pressable>
-            <Pressable onPress={confirm} style={styles.primaryBtn}>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={confirm} 
+              style={styles.primaryBtn}
+              activeOpacity={0.85}
+            >
               <Text style={styles.primaryBtnText}>Simpan ✓</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         )}
 
         {/* Cancel while recording */}
         {isRecording && (
-          <Pressable onPress={reset}>
+          <TouchableOpacity onPress={reset} activeOpacity={0.7}>
             <Text style={{ fontSize: 13, color: "#9ca3af", fontWeight: "600" }}>
               Selesai
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         )}
       </View>
+
+      {/* Custom Alert Modal */}
+      <Modal
+        visible={customAlert.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setCustomAlert({ ...customAlert, visible: false })}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalIconContainer, { backgroundColor: getIconBgColor() }]}>
+              {renderAlertIcon()}
+            </View>
+            <Text style={styles.modalTitle}>{customAlert.title}</Text>
+            <Text style={styles.modalMessage}>{customAlert.message}</Text>
+            <TouchableOpacity
+              onPress={() => setCustomAlert({ ...customAlert, visible: false })}
+              style={[styles.modalBtn, { backgroundColor: getBtnColor() }]}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalBtnText}>Oke</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -819,7 +860,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    elevation: 5,
+    zIndex: 1,
   },
   stopSquare: {
     width: 22,
@@ -836,7 +878,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 15,
+    zIndex: 10,
   },
   primaryBtnText: {
     fontSize: 15,
@@ -849,10 +892,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 13,
     borderRadius: 24,
+    elevation: 15,
+    zIndex: 10,
   },
   secondaryBtnText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#6b7280",
+  },
+  textArea: {
+    width: "100%",
+    minHeight: 120,
+    backgroundColor: "white",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    fontSize: 15,
+    color: "#1f2937",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    lineHeight: 22,
+  },
+  liveTranscriptText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: GREEN_DARK,
+    textAlign: "center",
+    lineHeight: 24,
+    fontStyle: "italic",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContainer: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "white",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1f36",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalBtn: {
+    backgroundColor: GREEN,
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
