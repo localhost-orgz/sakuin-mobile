@@ -19,6 +19,8 @@ import {
   Trash2,
   TrendingUp,
   X,
+  TrendingDown,
+  MoveRight,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
@@ -60,111 +62,100 @@ const MOCK_GOALS = [
   },
 ];
 
+// ─── Transaction Type (matches detailWallet.tsx) ─────────────────────────────
+type Transaction = {
+  _id: string;
+  name: string;
+  amount: number;
+  type: "income" | "expense" | "transfer";
+  date: string;
+  category_id: string | any;
+};
+
 // ─── Mock transactions ────────────────────────────────────────────────────────
-const MOCK_TRANSACTIONS: Record<
-  string,
-  {
-    id: string;
-    title: string;
-    subtitle: string;
-    amount: number;
-    date: string;
-    wallet: string;
-    type: "in" | "out";
-  }[]
-> = {
+const MOCK_TRANSACTIONS: Record<string, Transaction[]> = {
   "1": [
     {
-      id: "t1",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
+      _id: "t1",
+      name: "Jatinangor House",
       amount: 50_000,
+      type: "expense",
       date: "2025-03-15",
-      wallet: "SeaBank",
-      type: "out",
+      category_id: "Food & Drink",
     },
     {
-      id: "t2",
-      title: "Transfer Masuk",
-      subtitle: "Dari BCA",
+      _id: "t2",
+      name: "Transfer Masuk",
       amount: 500_000,
+      type: "income",
       date: "2025-03-14",
-      wallet: "SeaBank",
-      type: "in",
+      category_id: "Dari BCA",
     },
     {
-      id: "t3",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
+      _id: "t3",
+      name: "Jatinangor House",
       amount: 50_000,
+      type: "expense",
       date: "2025-03-14",
-      wallet: "SeaBank",
-      type: "out",
+      category_id: "Food & Drink",
     },
     {
-      id: "t4",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
+      _id: "t4",
+      name: "Jatinangor House",
       amount: 50_000,
+      type: "expense",
       date: "2025-03-13",
-      wallet: "SeaBank",
-      type: "out",
+      category_id: "Food & Drink",
     },
     {
-      id: "t5",
-      title: "Setoran Rutin",
-      subtitle: "Auto-debit",
+      _id: "t5",
+      name: "Setoran Rutin",
       amount: 300_000,
+      type: "income",
       date: "2025-03-12",
-      wallet: "BCA",
-      type: "in",
+      category_id: "Auto-debit",
     },
     {
-      id: "t6",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
+      _id: "t6",
+      name: "Jatinangor House",
       amount: 50_000,
+      type: "expense",
       date: "2025-03-12",
-      wallet: "SeaBank",
-      type: "out",
+      category_id: "Food & Drink",
     },
     {
-      id: "t7",
-      title: "Jatinangor House",
-      subtitle: "Food & Drink",
+      _id: "t7",
+      name: "Jatinangor House",
       amount: 50_000,
+      type: "expense",
       date: "2025-03-11",
-      wallet: "SeaBank",
-      type: "out",
+      category_id: "Food & Drink",
     },
     {
-      id: "t8",
-      title: "Transfer Masuk",
-      subtitle: "Dari BRI",
+      _id: "t8",
+      name: "Transfer Masuk",
       amount: 200_000,
+      type: "income",
       date: "2025-03-10",
-      wallet: "BCA",
-      type: "in",
+      category_id: "Dari BRI",
     },
   ],
   "2": [
     {
-      id: "t9",
-      title: "Setoran",
-      subtitle: "Manual",
+      _id: "t9",
+      name: "Setoran",
       amount: 500_000,
+      type: "income",
       date: "2025-03-15",
-      wallet: "BCA",
-      type: "in",
+      category_id: "Manual",
     },
     {
-      id: "t10",
-      title: "Makan Siang",
-      subtitle: "Food & Drink",
+      _id: "t10",
+      name: "Makan Siang",
       amount: 35_000,
+      type: "expense",
       date: "2025-03-14",
-      wallet: "BCA",
-      type: "out",
+      category_id: "Food & Drink",
     },
   ],
 };
@@ -180,13 +171,12 @@ const formatDate = (dateStr: string) =>
     year: "numeric",
   });
 
-type TxItem = (typeof MOCK_TRANSACTIONS)["1"][0];
-
-const groupByDate = (txs: TxItem[]) => {
-  const map: Record<string, TxItem[]> = {};
+const groupByDate = (txs: Transaction[]) => {
+  const map: Record<string, Transaction[]> = {};
   txs.forEach((tx) => {
-    if (!map[tx.date]) map[tx.date] = [];
-    map[tx.date].push(tx);
+    const dateKey = tx.date.split("T")[0];
+    if (!map[dateKey]) map[dateKey] = [];
+    map[dateKey].push(tx);
   });
   return Object.entries(map)
     .sort(([a], [b]) => b.localeCompare(a))
@@ -194,8 +184,31 @@ const groupByDate = (txs: TxItem[]) => {
 };
 
 // ─── Transaction Item ─────────────────────────────────────────────────────────
-const TransactionItem = ({ item }: { item: TxItem }) => {
-  const isIn = item.type === "in";
+const TransactionItem = ({ item }: { item: Transaction }) => {
+  let iconBgColor = "#f0fdf8"; // default income
+  if (item.type === "expense") {
+    iconBgColor = "#fef2f2";
+  } else if (item.type === "transfer") {
+    iconBgColor = "#fef9c3"; // Kuning muda untuk background transfer
+  }
+
+  let typeLabel = "Pemasukan";
+  if (item.type === "expense") {
+    typeLabel = "Pengeluaran";
+  } else if (item.type === "transfer") {
+    typeLabel = "Transfer / Pindahan";
+  }
+
+  let amountColor = "#00bf71"; // hijau
+  let amountSign = "+";
+  if (item.type === "expense") {
+    amountColor = "#f43f5e"; // merah
+    amountSign = "-";
+  } else if (item.type === "transfer") {
+    amountColor = "#eab308"; // Kuning
+    amountSign = "";
+  }
+
   return (
     <View
       style={{
@@ -208,51 +221,50 @@ const TransactionItem = ({ item }: { item: TxItem }) => {
         backgroundColor: "white",
       }}
     >
+      {/* Bagian Kontainer Ikon */}
       <View
         style={{
           width: 44,
           height: 44,
           borderRadius: 12,
-          backgroundColor: isIn ? "#f0fdf8" : "#fef2f2",
+          backgroundColor: iconBgColor,
           alignItems: "center",
           justifyContent: "center",
           marginRight: 12,
         }}
       >
-        {isIn ? (
-          <MoveUpRight size={18} color="#00bf71" strokeWidth={2.5} />
-        ) : (
-          <TrendingUp
-            size={18}
-            color="#f43f5e"
-            strokeWidth={2.5}
-            style={{ transform: [{ rotate: "180deg" }] }}
-          />
+        {item.type == "income" && (
+          <TrendingUp size={18} color="#00bf71" strokeWidth={2.5} />
+        )}
+        {item.type == "expense" && (
+          <TrendingDown size={18} color="#f43f5e" strokeWidth={2.5} />
+        )}
+        {item.type == "transfer" && (
+          <MoveRight size={18} color="#eab308" strokeWidth={2.5} /> 
         )}
       </View>
 
+      {/* Bagian Nama & Label */}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1f36" }}>
-          {item.title}
+          {item.name}
         </Text>
         <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-          {item.subtitle}
+          {typeLabel}
         </Text>
       </View>
 
+      {/* Bagian Nominal Uang */}
       <View style={{ alignItems: "flex-end" }}>
         <Text
           style={{
             fontSize: 15,
             fontWeight: "700",
-            color: isIn ? "#00bf71" : "#1a1f36",
+            color: amountColor,
           }}
         >
-          {isIn ? "+" : "-"}
+          {amountSign}
           {formatRupiah(item.amount)}
-        </Text>
-        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-          {item.wallet}
         </Text>
       </View>
     </View>
@@ -314,9 +326,8 @@ export default function DetailGoal() {
     const q = search.toLowerCase();
     return allTransactions.filter(
       (tx) =>
-        tx.title.toLowerCase().includes(q) ||
-        tx.subtitle.toLowerCase().includes(q) ||
-        tx.wallet.toLowerCase().includes(q),
+        tx.name.toLowerCase().includes(q) ||
+        (tx.category_id && typeof tx.category_id === "string" && tx.category_id.toLowerCase().includes(q)),
     );
   }, [search, allTransactions, goal]);
 
@@ -719,7 +730,7 @@ export default function DetailGoal() {
         {/* ── SCROLLABLE LIST (header + transactions) ──────────────────── */}
         <SectionList
           sections={sections}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id}
           showsVerticalScrollIndicator={false}
           // Over-scroll area matches gradient colour
           style={{ backgroundColor: theme.gradientColors[0] }}
