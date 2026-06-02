@@ -72,93 +72,7 @@ type Transaction = {
   category_id: string | any;
 };
 
-// ─── Mock transactions ────────────────────────────────────────────────────────
-const MOCK_TRANSACTIONS: Record<string, Transaction[]> = {
-  "1": [
-    {
-      _id: "t1",
-      name: "Jatinangor House",
-      amount: 50_000,
-      type: "expense",
-      date: "2025-03-15",
-      category_id: "Food & Drink",
-    },
-    {
-      _id: "t2",
-      name: "Transfer Masuk",
-      amount: 500_000,
-      type: "income",
-      date: "2025-03-14",
-      category_id: "Dari BCA",
-    },
-    {
-      _id: "t3",
-      name: "Jatinangor House",
-      amount: 50_000,
-      type: "expense",
-      date: "2025-03-14",
-      category_id: "Food & Drink",
-    },
-    {
-      _id: "t4",
-      name: "Jatinangor House",
-      amount: 50_000,
-      type: "expense",
-      date: "2025-03-13",
-      category_id: "Food & Drink",
-    },
-    {
-      _id: "t5",
-      name: "Setoran Rutin",
-      amount: 300_000,
-      type: "income",
-      date: "2025-03-12",
-      category_id: "Auto-debit",
-    },
-    {
-      _id: "t6",
-      name: "Jatinangor House",
-      amount: 50_000,
-      type: "expense",
-      date: "2025-03-12",
-      category_id: "Food & Drink",
-    },
-    {
-      _id: "t7",
-      name: "Jatinangor House",
-      amount: 50_000,
-      type: "expense",
-      date: "2025-03-11",
-      category_id: "Food & Drink",
-    },
-    {
-      _id: "t8",
-      name: "Transfer Masuk",
-      amount: 200_000,
-      type: "income",
-      date: "2025-03-10",
-      category_id: "Dari BRI",
-    },
-  ],
-  "2": [
-    {
-      _id: "t9",
-      name: "Setoran",
-      amount: 500_000,
-      type: "income",
-      date: "2025-03-15",
-      category_id: "Manual",
-    },
-    {
-      _id: "t10",
-      name: "Makan Siang",
-      amount: 35_000,
-      type: "expense",
-      date: "2025-03-14",
-      category_id: "Food & Drink",
-    },
-  ],
-};
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatRupiah = (n: number) =>
@@ -309,9 +223,9 @@ export default function DetailGoal() {
     setRefreshing(false);
   }, [fetchGoalDetail]);
 
-  const allTransactions = useMemo(() => {
+  const allTransactions = useMemo<Transaction[]>(() => {
     if (!goal) return [];
-    return MOCK_TRANSACTIONS[goal.id] ?? MOCK_TRANSACTIONS["1"] ?? [];
+    return goal.transactions || [];
   }, [goal]);
 
   const { theme } = useWalletTheme(goal?.themeId ? (goal.themeId as WalletThemeId) : "ocean");
@@ -324,11 +238,18 @@ export default function DetailGoal() {
     if (!goal) return [];
     if (!search.trim()) return allTransactions;
     const q = search.toLowerCase();
-    return allTransactions.filter(
-      (tx) =>
-        tx.name.toLowerCase().includes(q) ||
-        (tx.category_id && typeof tx.category_id === "string" && tx.category_id.toLowerCase().includes(q)),
-    );
+    return allTransactions.filter((tx) => {
+      const nameMatch = tx.name?.toLowerCase().includes(q);
+      let categoryMatch = false;
+      if (tx.category_id) {
+        if (typeof tx.category_id === "string") {
+          categoryMatch = tx.category_id.toLowerCase().includes(q);
+        } else if (tx.category_id.name && typeof tx.category_id.name === "string") {
+          categoryMatch = tx.category_id.name.toLowerCase().includes(q);
+        }
+      }
+      return nameMatch || categoryMatch;
+    });
   }, [search, allTransactions, goal]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
