@@ -1,13 +1,6 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CurrentGoals from "@/components/Home/CurrentGoals";
@@ -17,8 +10,8 @@ import {
   ScrollableTopContent,
 } from "@/components/Home/TopSection";
 import TopSpendCategory from "@/components/Home/TopSpendCategory";
-import { useFocusEffect } from "expo-router";
 import { apiRequest } from "@/utils/api";
+import { useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
 export default function Home() {
@@ -125,7 +118,7 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       initHomeData();
-    }, [])
+    }, []),
   );
 
   const onRefresh = useCallback(async () => {
@@ -165,14 +158,22 @@ export default function Home() {
       // Fetch categories & wallets to map
       const [catsRes, walletsRes] = await Promise.all([
         apiRequest("/categories", { method: "GET" }),
-        apiRequest("/wallets", { method: "GET" })
+        apiRequest("/wallets", { method: "GET" }),
       ]);
 
-      if (catsRes?.status !== "success" || !catsRes.data || catsRes.data.length === 0) {
+      if (
+        catsRes?.status !== "success" ||
+        !catsRes.data ||
+        catsRes.data.length === 0
+      ) {
         alert("No categories found to seed transactions!");
         return;
       }
-      if (walletsRes?.status !== "success" || !walletsRes.data || walletsRes.data.length === 0) {
+      if (
+        walletsRes?.status !== "success" ||
+        !walletsRes.data ||
+        walletsRes.data.length === 0
+      ) {
         alert("No wallets found to seed transactions!");
         return;
       }
@@ -182,19 +183,73 @@ export default function Home() {
 
       // Transactions for currentMonth (May 2026) totaling 15,000,000 IDR
       const mayTransactions = [
-        { name: "Salary Payment", amount: "5000000", type: "income", description: "Monthly corporate salary payout", date: "2026-05-01" },
-        { name: "Rent & Housing", amount: "3500000", type: "expense", description: "Apartment rental cost", date: "2026-05-03" },
-        { name: "Freelance Project", amount: "4000000", type: "income", description: "Web app development milestone", date: "2026-05-10" },
-        { name: "Groceries & Supplies", amount: "1500000", type: "expense", description: "Monthly supermarket groceries", date: "2026-05-15" },
-        { name: "Weekend Dinner", amount: "1000000", type: "expense", description: "Fine dining restaurant bill", date: "2026-05-24" }
+        {
+          name: "Salary Payment",
+          amount: "5000000",
+          type: "income",
+          description: "Monthly corporate salary payout",
+          date: "2026-05-01",
+        },
+        {
+          name: "Rent & Housing",
+          amount: "3500000",
+          type: "expense",
+          description: "Apartment rental cost",
+          date: "2026-05-03",
+        },
+        {
+          name: "Freelance Project",
+          amount: "4000000",
+          type: "income",
+          description: "Web app development milestone",
+          date: "2026-05-10",
+        },
+        {
+          name: "Groceries & Supplies",
+          amount: "1500000",
+          type: "expense",
+          description: "Monthly supermarket groceries",
+          date: "2026-05-15",
+        },
+        {
+          name: "Weekend Dinner",
+          amount: "1000000",
+          type: "expense",
+          description: "Fine dining restaurant bill",
+          date: "2026-05-24",
+        },
       ];
 
       // Transactions for lastMonth (April 2026) totaling 10,000,000 IDR
       const aprilTransactions = [
-        { name: "Dividends Payout", amount: "3000000", type: "income", description: "Quarterly stock market dividend", date: "2026-04-05" },
-        { name: "Electricity & WiFi", amount: "1500000", type: "expense", description: "Home utilities bill payment", date: "2026-04-12" },
-        { name: "Consulting Gig", amount: "4000000", type: "income", description: "Technical architecture consulting", date: "2026-04-18" },
-        { name: "Gym Membership", amount: "1500000", type: "expense", description: "Annual premium gym subscription", date: "2026-04-26" }
+        {
+          name: "Dividends Payout",
+          amount: "3000000",
+          type: "income",
+          description: "Quarterly stock market dividend",
+          date: "2026-04-05",
+        },
+        {
+          name: "Electricity & WiFi",
+          amount: "1500000",
+          type: "expense",
+          description: "Home utilities bill payment",
+          date: "2026-04-12",
+        },
+        {
+          name: "Consulting Gig",
+          amount: "4000000",
+          type: "income",
+          description: "Technical architecture consulting",
+          date: "2026-04-18",
+        },
+        {
+          name: "Gym Membership",
+          amount: "1500000",
+          type: "expense",
+          description: "Annual premium gym subscription",
+          date: "2026-04-26",
+        },
       ];
 
       const allSeedTxs = [...mayTransactions, ...aprilTransactions];
@@ -214,8 +269,8 @@ export default function Home() {
             name: item.name,
             description: item.description,
             date: item.date,
-            input_method: "manual"
-          }
+            input_method: "manual",
+          },
         });
       });
 
@@ -299,30 +354,13 @@ export default function Home() {
 
         {/* ── Content sections ── */}
         <View style={{ marginTop: 56, marginBottom: 0 }}>
-          <TopSpendCategory TopCategories={topCategoriesData} loading={loading} />
+          <TopSpendCategory
+            TopCategories={topCategoriesData}
+            loading={loading}
+          />
           <CurrentGoals goalsList={goals} loading={loading} />
           {/* Properti transactions sekarang dialirkan dari state API bukan dari konstanta RECENT_TRANSACTIONS mock lagi */}
           <RecentTransactions transactions={transactions} loading={loading} />
-
-          {/* Seeder button */}
-          <View style={{ marginHorizontal: 20, marginTop: 20 }}>
-            <TouchableOpacity
-              onPress={seedTransactions}
-              disabled={seeding}
-              style={{
-                backgroundColor: "#00bf71",
-                paddingVertical: 14,
-                borderRadius: 16,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: seeding ? 0.7 : 1,
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 15, fontWeight: "600" }}>
-                {seeding ? "Seeding Transactions..." : "⚡ Seed May (15M) & April (10M) Transactions"}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </View>

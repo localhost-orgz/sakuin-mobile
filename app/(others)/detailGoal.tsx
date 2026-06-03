@@ -6,6 +6,7 @@
  */
 
 import useWalletTheme, { WalletThemeId } from "@/hooks/useWalletTheme";
+import { apiRequest } from "@/utils/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -13,17 +14,18 @@ import {
   ChevronLeft,
   Edit2,
   MoreHorizontal,
-  MoveUpRight,
+  MoveRight,
   Plus,
   Search,
   Trash2,
+  TrendingDown,
   TrendingUp,
   X,
-  TrendingDown,
-  MoveRight,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   RefreshControl,
   SectionList,
   StatusBar,
@@ -31,12 +33,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
-  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EditGoalSheet from "./editGoal";
-import { apiRequest } from "@/utils/api";
 
 // ─── Mock goal data ───────────────────────────────────────────────────────────
 const MOCK_GOALS = [
@@ -72,8 +71,6 @@ type Transaction = {
   category_id: string | any;
 };
 
-
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatRupiah = (n: number) =>
   "Rp" + new Intl.NumberFormat("id-ID").format(n);
@@ -88,6 +85,7 @@ const formatDate = (dateStr: string) =>
 const groupByDate = (txs: Transaction[]) => {
   const map: Record<string, Transaction[]> = {};
   txs.forEach((tx) => {
+    if (!tx || !tx.date) return;
     const dateKey = tx.date.split("T")[0];
     if (!map[dateKey]) map[dateKey] = [];
     map[dateKey].push(tx);
@@ -154,7 +152,7 @@ const TransactionItem = ({ item }: { item: Transaction }) => {
           <TrendingDown size={18} color="#f43f5e" strokeWidth={2.5} />
         )}
         {item.type == "transfer" && (
-          <MoveRight size={18} color="#eab308" strokeWidth={2.5} /> 
+          <MoveRight size={18} color="#eab308" strokeWidth={2.5} />
         )}
       </View>
 
@@ -192,7 +190,7 @@ export default function DetailGoal() {
   const params = useLocalSearchParams<{ goalId?: string }>();
 
   const goalId = params.goalId ?? "1";
-  
+
   const [goal, setGoal] = useState<any>(null);
   const [loadingGoal, setLoadingGoal] = useState(true);
   const [search, setSearch] = useState("");
@@ -228,9 +226,13 @@ export default function DetailGoal() {
     return goal.transactions || [];
   }, [goal]);
 
-  const { theme } = useWalletTheme(goal?.themeId ? (goal.themeId as WalletThemeId) : "ocean");
+  const { theme } = useWalletTheme(
+    goal?.themeId ? (goal.themeId as WalletThemeId) : "ocean",
+  );
 
-  const percentage = goal ? Math.min((goal.current / goal.target) * 100, 100) : 0;
+  const percentage = goal
+    ? Math.min((goal.current / goal.target) * 100, 100)
+    : 0;
   const remaining = goal ? goal.target - goal.current : 0;
   const isCompleted = percentage >= 100;
 
@@ -244,7 +246,10 @@ export default function DetailGoal() {
       if (tx.category_id) {
         if (typeof tx.category_id === "string") {
           categoryMatch = tx.category_id.toLowerCase().includes(q);
-        } else if (tx.category_id.name && typeof tx.category_id.name === "string") {
+        } else if (
+          tx.category_id.name &&
+          typeof tx.category_id.name === "string"
+        ) {
           categoryMatch = tx.category_id.name.toLowerCase().includes(q);
         }
       }
@@ -256,7 +261,14 @@ export default function DetailGoal() {
 
   if (loadingGoal || !goal) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#f5f6fa", justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#f5f6fa",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <ActivityIndicator size="large" color="#00bf71" />
       </View>
     );
@@ -807,7 +819,9 @@ export default function DetailGoal() {
                         style: "destructive",
                         onPress: async () => {
                           try {
-                            const res = await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
+                            const res = await apiRequest(`/goals/${goalId}`, {
+                              method: "DELETE",
+                            });
                             if (res.status === "success" || res.message) {
                               router.back();
                             }
@@ -815,9 +829,9 @@ export default function DetailGoal() {
                             console.error("Failed to delete goal:", err);
                             alert("Gagal menghapus goal");
                           }
-                        }
-                      }
-                    ]
+                        },
+                      },
+                    ],
                   );
                 }}
               >

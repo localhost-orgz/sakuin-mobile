@@ -1,15 +1,69 @@
-import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 const BASE_URL = "https://sakuin-be.vercel.app";
 
 const DEFAULT_GOALS = [
-  { id: "1", name: "Macbook Pro", icon: "💻", current: 8500000, target: 25000000, themeId: "indigo", deadline: "30 Dec 2026", description: "Save up for the powerful Macbook Pro M3" },
-  { id: "2", name: "Bali Trip", icon: "🏖️", current: 3200000, target: 5000000, themeId: "ember", deadline: "15 Oct 2026", description: "Holiday trip with friends to Bali" },
-  { id: "3", name: "Emergency Fund", icon: "🛡️", current: 12000000, target: 12000000, themeId: "forest", deadline: "01 Jan 2027", description: "Secure emergency cash reserve" },
-  { id: "4", name: "New Camera", icon: "📷", current: 1800000, target: 7500000, themeId: "violet", deadline: "20 Nov 2026", description: "Sony mirrorless camera for vlogging" },
-  { id: "5", name: "Wedding Fund", icon: "💍", current: 22000000, target: 50000000, themeId: "rose", deadline: "05 Jun 2027", description: "Preparations for the big day" },
-  { id: "6", name: "Uniqlo Shopping", icon: "👕", current: 150000, target: 600000, themeId: "ocean", deadline: "30 Jun 2026", description: "Buy some clean basic clothes" }
+  {
+    id: "1",
+    name: "Macbook Pro",
+    icon: "💻",
+    current: 8500000,
+    target: 25000000,
+    themeId: "indigo",
+    deadline: "30 Dec 2026",
+    description: "Save up for the powerful Macbook Pro M3",
+  },
+  {
+    id: "2",
+    name: "Bali Trip",
+    icon: "🏖️",
+    current: 3200000,
+    target: 5000000,
+    themeId: "ember",
+    deadline: "15 Oct 2026",
+    description: "Holiday trip with friends to Bali",
+  },
+  {
+    id: "3",
+    name: "Emergency Fund",
+    icon: "🛡️",
+    current: 12000000,
+    target: 12000000,
+    themeId: "forest",
+    deadline: "01 Jan 2027",
+    description: "Secure emergency cash reserve",
+  },
+  {
+    id: "4",
+    name: "New Camera",
+    icon: "📷",
+    current: 1800000,
+    target: 7500000,
+    themeId: "violet",
+    deadline: "20 Nov 2026",
+    description: "Sony mirrorless camera for vlogging",
+  },
+  {
+    id: "5",
+    name: "Wedding Fund",
+    icon: "💍",
+    current: 22000000,
+    target: 50000000,
+    themeId: "rose",
+    deadline: "05 Jun 2027",
+    description: "Preparations for the big day",
+  },
+  {
+    id: "6",
+    name: "Uniqlo Shopping",
+    icon: "👕",
+    current: 150000,
+    target: 600000,
+    themeId: "ocean",
+    deadline: "30 Jun 2026",
+    description: "Buy some clean basic clothes",
+  },
 ];
 
 const uuid = () => Math.random().toString(36).substring(2, 11);
@@ -17,7 +71,10 @@ const uuid = () => Math.random().toString(36).substring(2, 11);
 async function getLocalGoals() {
   const val = await SecureStore.getItemAsync("sakuin_goals");
   if (!val) {
-    await SecureStore.setItemAsync("sakuin_goals", JSON.stringify(DEFAULT_GOALS));
+    await SecureStore.setItemAsync(
+      "sakuin_goals",
+      JSON.stringify(DEFAULT_GOALS),
+    );
     return DEFAULT_GOALS;
   }
   try {
@@ -31,13 +88,19 @@ async function setLocalGoals(goals: any) {
   await SecureStore.setItemAsync("sakuin_goals", JSON.stringify(goals));
 }
 
-async function handleOfflineFallback(endpoint: string, method: string, body: any) {
+async function handleOfflineFallback(
+  endpoint: string,
+  method: string,
+  body: any,
+) {
   const goals = await getLocalGoals();
   const idParam = endpoint.replace("/goals", "").replace("/", "");
 
   if (method === "GET") {
     if (idParam) {
-      const goal = goals.find((g: any) => g.id === idParam || g._id === idParam);
+      const goal = goals.find(
+        (g: any) => g.id === idParam || g._id === idParam,
+      );
       return { status: "success", data: goal };
     }
     return { status: "success", data: goals };
@@ -52,7 +115,7 @@ async function handleOfflineFallback(endpoint: string, method: string, body: any
       target: Number(body.target) || Number(body.target_amount) || 100000,
       themeId: body.themeId || body.color || "ocean",
       deadline: body.deadline || "30 Dec 2026",
-      description: body.description || ""
+      description: body.description || "",
     };
     goals.push(newGoal);
     await setLocalGoals(goals);
@@ -60,7 +123,9 @@ async function handleOfflineFallback(endpoint: string, method: string, body: any
   }
 
   if (method === "DELETE" && idParam) {
-    const updated = goals.filter((g: any) => g.id !== idParam && g._id !== idParam);
+    const updated = goals.filter(
+      (g: any) => g.id !== idParam && g._id !== idParam,
+    );
     await setLocalGoals(updated);
     return { status: "success", message: "Goal deleted successfully" };
   }
@@ -68,118 +133,218 @@ async function handleOfflineFallback(endpoint: string, method: string, body: any
   if (method === "PUT" && idParam && body) {
     const updated = goals.map((g: any) => {
       if (g.id === idParam || g._id === idParam) {
-        return { 
-          ...g, 
+        return {
+          ...g,
           ...body,
           icon: body.icon || body.emoticon || g.icon,
-          current: body.current !== undefined ? body.current : (body.current_amount !== undefined ? body.current_amount : g.current),
-          target: body.target !== undefined ? body.target : (body.target_amount !== undefined ? body.target_amount : g.target),
+          current:
+            body.current !== undefined
+              ? body.current
+              : body.current_amount !== undefined
+                ? body.current_amount
+                : g.current,
+          target:
+            body.target !== undefined
+              ? body.target
+              : body.target_amount !== undefined
+                ? body.target_amount
+                : g.target,
           themeId: body.themeId || body.color || g.themeId,
         };
       }
       return g;
     });
     await setLocalGoals(updated);
-    const updatedGoal = updated.find((g: any) => g.id === idParam || g._id === idParam);
+    const updatedGoal = updated.find(
+      (g: any) => g.id === idParam || g._id === idParam,
+    );
     return { status: "success", data: updatedGoal };
   }
 
   return { status: "success", data: [] };
 }
 
-export async function apiRequest(endpoint: string, { 
-   method = "GET", 
-   query = {}, 
-   body = null, 
-   headers: customHeaders = {}, 
-   isFormData = false 
-}: any = {}) {
-   
-   const queryString = Object.keys(query).length ? "?" + new URLSearchParams(query).toString() : "";
-   const url = `${BASE_URL}${endpoint}${queryString}`;
+export async function apiRequest(
+  endpoint: string,
+  {
+    method = "GET",
+    query = {},
+    body = null,
+    headers: customHeaders = {},
+    isFormData = false,
+  }: any = {},
+) {
+  const queryString = Object.keys(query).length
+    ? "?" + new URLSearchParams(query).toString()
+    : "";
+  const url = `${BASE_URL}${endpoint}${queryString}`;
 
-   const token = await SecureStore.getItemAsync("user_token");
-   const isGoals = endpoint.startsWith("/goals");
+  const token = await SecureStore.getItemAsync("user_token");
+  const isGoals = endpoint.startsWith("/goals");
 
-   const headers: any = isFormData
-      ? { ...customHeaders }
-      : { "Content-Type": "application/json", ...customHeaders };
+  const headers: any = isFormData
+    ? { ...customHeaders }
+    : { "Content-Type": "application/json", ...customHeaders };
 
-   if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-   }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-   const options: RequestInit = { method, headers };
-   if (body) {
-      let finalBody = body;
-      if (isGoals && !isFormData) {
-         // Map frontend fields to backend expected fields
-         finalBody = {
-            name: body.name,
-            emoticon: body.emoticon || body.icon,
-            target_amount: body.target_amount !== undefined ? body.target_amount : body.target,
-            color: body.color || body.themeId,
-            current_amount: body.current_amount !== undefined ? body.current_amount : body.current,
-         };
-         // Clear undefined fields
-         Object.keys(finalBody).forEach(key => {
-            if (finalBody[key] === undefined) {
-               delete finalBody[key];
-            }
-         });
+  const options: RequestInit = { method, headers };
+  if (body) {
+    let finalBody = body;
+    if (isGoals && !isFormData) {
+      // Map frontend fields to backend expected fields
+      finalBody = {
+        name: body.name,
+        emoticon: body.emoticon || body.icon,
+        target_amount:
+          body.target_amount !== undefined ? body.target_amount : body.target,
+        color: body.color || body.themeId,
+        current_amount:
+          body.current_amount !== undefined
+            ? body.current_amount
+            : body.current,
+      };
+      // Clear undefined fields
+      Object.keys(finalBody).forEach((key) => {
+        if (finalBody[key] === undefined) {
+          delete finalBody[key];
+        }
+      });
+    }
+    options.body = isFormData ? finalBody : JSON.stringify(finalBody);
+  }
+
+  try {
+    const res = await fetch(url, options);
+
+    if (isGoals && res.status === 404) {
+      console.warn(
+        `Goals API returned 404. Falling back to offline SecureStore.`,
+      );
+      return await handleOfflineFallback(endpoint, method, body);
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      data = {};
+    }
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        await SecureStore.deleteItemAsync("user_token");
+        router.replace("/(auth)/welcome");
       }
-      options.body = isFormData ? finalBody : JSON.stringify(finalBody);
-   }
+      throw new Error(data.message || "Request failed");
+    }
 
-   try {
-      const res = await fetch(url, options);
-
-      if (isGoals && res.status === 404) {
-         console.warn(`Goals API returned 404. Falling back to offline SecureStore.`);
-         return await handleOfflineFallback(endpoint, method, body);
-      }
-      
-      let data;
+    // Map incoming backend fields to frontend expected fields
+    if (isGoals && data && data.status === "success" && data.data) {
+      let histories: any[] = [];
       try {
-         data = await res.json();
-      } catch (jsonErr) {
-         data = {};
+        const historyUrl = `${BASE_URL}/goal-history`;
+        const historyRes = await fetch(historyUrl, {
+          method: "GET",
+          headers: {
+            ...headers,
+          },
+        });
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          if (historyData) {
+            if (Array.isArray(historyData)) {
+              histories = historyData;
+            } else if (Array.isArray(historyData.data)) {
+              histories = historyData.data;
+            } else if (
+              historyData.status === "success" &&
+              Array.isArray(historyData.data)
+            ) {
+              histories = historyData.data;
+            }
+          }
+        }
+      } catch (historyErr) {
+        console.warn(
+          "Failed to fetch goal history in apiRequest mapping:",
+          historyErr,
+        );
       }
 
-      if (!res.ok) {
-         if (res.status === 401) {
-            await SecureStore.deleteItemAsync("user_token");
-            router.replace("/(auth)/welcome");
-         }
-         throw new Error(data.message || "Request failed");
-      }
+      const mapGoal = (g: any) => {
+        if (!g) return g;
+        const goalId = g._id || g.id;
 
-      // Map incoming backend fields to frontend expected fields
-      if (isGoals && data && data.status === "success" && data.data) {
-         const mapGoal = (g: any) => {
-            if (!g) return g;
-            return {
-               ...g,
-               icon: g.icon || g.emoticon,
-               target: g.target !== undefined ? g.target : g.target_amount,
-               themeId: g.themeId || g.color,
-               current: g.current !== undefined ? g.current : (g.current_amount !== undefined ? g.current_amount : 0),
-            };
-         };
-         if (Array.isArray(data.data)) {
-            data.data = data.data.map(mapGoal);
-         } else {
-            data.data = mapGoal(data.data);
-         }
-      }
+        const goalHistories = histories.filter((item: any) => {
+          const itemGoalId =
+            item && item.goal_id && typeof item.goal_id === "object"
+              ? item.goal_id._id || item.goal_id.id
+              : item && item.goal_id;
+          return itemGoalId === goalId;
+        });
 
-      return data;
-   } catch (err) {
-      if (isGoals) {
-         console.warn(`Goals API failed with error. Falling back to offline SecureStore.`, err);
-         return await handleOfflineFallback(endpoint, method, body);
+        const calculatedCurrent = goalHistories.reduce(
+          (sum: number, item: any) => {
+            const amt = Number(item.amount) || 0;
+            return item.type === "withdraw" ? sum - amt : sum + amt;
+          },
+          0,
+        );
+
+        const mappedTxs = goalHistories.map((item: any) => {
+          const type = item.type === "withdraw" ? "expense" : "income";
+          const name =
+            item.name ||
+            (item.type === "withdraw" ? "Penarikan Dana" : "Tabungan Masuk");
+          return {
+            ...item,
+            id: item.id || item._id,
+            _id: item._id || item.id,
+            name,
+            type,
+            amount: Number(item.amount) || 0,
+            date: item.date || new Date().toISOString(),
+            category_id: item.category_id || "cat_5",
+          };
+        });
+
+        return {
+          ...g,
+          icon: g.icon || g.emoticon,
+          target: g.target !== undefined ? g.target : g.target_amount,
+          themeId: g.themeId || g.color,
+          current:
+            goalHistories.length > 0
+              ? calculatedCurrent
+              : g.current !== undefined
+                ? g.current
+                : g.current_amount !== undefined
+                  ? g.current_amount
+                  : 0,
+          transactions: mappedTxs,
+          history: goalHistories,
+        };
+      };
+      if (Array.isArray(data.data)) {
+        data.data = data.data.map(mapGoal);
+      } else {
+        data.data = mapGoal(data.data);
       }
-      console.error("API Request Error:", err);
-      throw err;
-   }
+    }
+
+    return data;
+  } catch (err) {
+    if (isGoals) {
+      console.warn(
+        `Goals API failed with error. Falling back to offline SecureStore.`,
+        err,
+      );
+      return await handleOfflineFallback(endpoint, method, body);
+    }
+    console.error("API Request Error:", err);
+    throw err;
+  }
 }
