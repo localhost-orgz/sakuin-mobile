@@ -156,14 +156,70 @@ export async function apiRequest(endpoint: string, {
 
       // Map incoming backend fields to frontend expected fields
       if (isGoals && data && data.status === "success" && data.data) {
+         let histories: any[] = [];
+         try {
+            const historyUrl = `${BASE_URL}/goal-history`;
+            const historyRes = await fetch(historyUrl, {
+               method: "GET",
+               headers: {
+                  ...headers
+               }
+            });
+            if (historyRes.ok) {
+               const historyData = await historyRes.json();
+               if (historyData) {
+                  if (Array.isArray(historyData)) {
+                     histories = historyData;
+                  } else if (Array.isArray(historyData.data)) {
+                     histories = historyData.data;
+                  } else if (historyData.status === "success" && Array.isArray(historyData.data)) {
+                     histories = historyData.data;
+                  }
+               }
+            }
+         } catch (historyErr) {
+            console.warn("Failed to fetch goal history in apiRequest mapping:", historyErr);
+         }
+
          const mapGoal = (g: any) => {
             if (!g) return g;
+            const goalId = g._id || g.id;
+
+            const goalHistories = histories.filter((item: any) => {
+               const itemGoalId = (item && item.goal_id && typeof item.goal_id === 'object')
+                 ? (item.goal_id._id || item.goal_id.id)
+                 : (item && item.goal_id);
+               return itemGoalId === goalId;
+            });
+
+            const calculatedCurrent = goalHistories.reduce((sum: number, item: any) => {
+               const amt = Number(item.amount) || 0;
+               return item.type === "withdraw" ? sum - amt : sum + amt;
+            }, 0);
+
+            const mappedTxs = goalHistories.map((item: any) => {
+               const type = item.type === "withdraw" ? "expense" : "income";
+               const name = item.name || (item.type === "withdraw" ? "Penarikan Dana" : "Tabungan Masuk");
+               return {
+                  ...item,
+                  id: item.id || item._id,
+                  _id: item._id || item.id,
+                  name,
+                  type,
+                  amount: Number(item.amount) || 0,
+                  date: item.date || new Date().toISOString(),
+                  category_id: item.category_id || "cat_5"
+               };
+            });
+
             return {
                ...g,
                icon: g.icon || g.emoticon,
                target: g.target !== undefined ? g.target : g.target_amount,
                themeId: g.themeId || g.color,
-               current: g.current !== undefined ? g.current : (g.current_amount !== undefined ? g.current_amount : 0),
+               current: goalHistories.length > 0 ? calculatedCurrent : (g.current !== undefined ? g.current : (g.current_amount !== undefined ? g.current_amount : 0)),
+               transactions: mappedTxs,
+               history: goalHistories
             };
          };
          if (Array.isArray(data.data)) {

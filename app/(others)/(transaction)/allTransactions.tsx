@@ -12,11 +12,20 @@ import { apiRequest } from "@/utils/api";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
-import { ChevronLeft, Filter, Search, X, FileSpreadsheet, FileText, CalendarDays } from "lucide-react-native";
-import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
+  exportTransactionsFile,
+  filterByDateRange,
+  formatDisplayDate,
+  type ExportFormat,
+} from "@/utils/exportTransactions";
+import { ChevronLeft, FileSpreadsheet, FileText, Filter, Search, X } from "lucide-react-native";
+import React, { useMemo, useState, useCallback } from "react";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import {
+  ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   SectionList,
   StatusBar,
@@ -24,17 +33,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Import export/sharing modules
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx-js-style";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,48 +110,25 @@ const groupByDate = (txs: any[]): TxSection[] => {
     }));
 };
 
-const findCategory = (tx: any, categories: any[]) => {
-  if (!tx || !tx.category_id) return null;
-  if (typeof tx.category_id === "object") {
-    const id = tx.category_id._id || tx.category_id.id;
-    return categories.find(c => c._id === id || c.id === id) || tx.category_id;
-  }
-  return categories.find(c => c._id === tx.category_id || c.id === tx.category_id);
-};
-
-const findWallet = (tx: any, wallets: any[]) => {
-  if (!tx || !tx.wallet_id) return null;
-  if (typeof tx.wallet_id === "object") {
-    const id = tx.wallet_id._id || tx.wallet_id.id;
-    return wallets.find(w => w._id === id || w.id === id) || tx.wallet_id;
-  }
-  return wallets.find(w => w._id === tx.wallet_id || w.id === tx.wallet_id);
-};
-
 // ─── Transaction Row — mirrors RecentTransactionItem exactly ─────────────────
 const TransactionRow = ({
   item,
   wallets,
-  categories,
   onPress,
 }: {
   item: any;
   wallets: any[];
-  categories: any[];
   onPress: () => void;
 }) => {
-  const matchedCat = findCategory(item, categories);
-  const matchedWallet = findWallet(item, wallets);
-
-  const categoryEmoticon = matchedCat?.emoticon || "💸";
-  const categoryName = matchedCat?.name || "Other";
+  const categoryEmoticon = item.category_id?.emoticon || "💸";
+  const categoryName = item.category_id?.name || "Other";
   
-  const themeId = matchedCat?.themeId || matchedCat?.theme_id || matchedCat?.color || "ocean";
+  const themeId = item.category_id?.themeId || item.category_id?.theme_id || item.category_id?.color || "ocean";
   const { theme } = useWalletTheme(
     (themeId as WalletThemeId) ?? "ocean"
   );
 
-  const walletName = matchedWallet ? matchedWallet.name : "Wallet";
+  const walletName = item.wallet_id ? item.wallet_id.name : "Wallet";
 
   const isIncome = item.type === "income";
   const isTransfer = item.type === "transfer";
@@ -231,6 +208,157 @@ const FilterChip = ({
   </Pressable>
 );
 
+// ─── Export date range modal ──────────────────────────────────────────────────
+const ExportDateRangeModal = ({
+  visible,
+  format,
+  startDate,
+  endDate,
+  transactionCount,
+  exporting,
+  onStartDatePress,
+  onEndDatePress,
+  onCancel,
+  onExport,
+}: {
+  visible: boolean;
+  format: ExportFormat;
+  startDate: Date;
+  endDate: Date;
+  transactionCount: number;
+  exporting: boolean;
+  onStartDatePress: () => void;
+  onEndDatePress: () => void;
+  onCancel: () => void;
+  onExport: () => void;
+}) => {
+  const formatLabel = format === "pdf" ? "PDF" : "Excel";
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: "white",
+            borderRadius: 24,
+            padding: 24,
+            width: "100%",
+            gap: 14,
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "800", color: "#1a1f36" }}>
+            Export {formatLabel}
+          </Text>
+          <Text style={{ fontSize: 13, color: "#6b7280", lineHeight: 20 }}>
+            Pilih rentang tanggal transaksi yang ingin diekspor.
+          </Text>
+
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#9ca3af" }}>
+              DARI TANGGAL
+            </Text>
+            <Pressable
+              onPress={onStartDatePress}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: "#e5e7eb",
+                backgroundColor: "#f9fafb",
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>
+                {formatDisplayDate(startDate)}
+              </Text>
+            </Pressable>
+
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: "#9ca3af",
+                marginTop: 4,
+              }}
+            >
+              SAMPAI TANGGAL
+            </Text>
+            <Pressable
+              onPress={onEndDatePress}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: "#e5e7eb",
+                backgroundColor: "#f9fafb",
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>
+                {formatDisplayDate(endDate)}
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={{ fontSize: 12, color: "#6b7280", fontWeight: "600" }}>
+            {transactionCount} transaksi dalam rentang ini
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+            <Pressable
+              onPress={onCancel}
+              disabled={exporting}
+              style={{
+                flex: 1,
+                paddingVertical: 14,
+                borderRadius: 16,
+                backgroundColor: "#f3f4f6",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "700", color: "#374151" }}>Batal</Text>
+            </Pressable>
+            <Pressable
+              onPress={onExport}
+              disabled={exporting || transactionCount === 0}
+              style={{
+                flex: 1,
+                paddingVertical: 14,
+                borderRadius: 16,
+                backgroundColor:
+                  exporting || transactionCount === 0 ? "#9ca3af" : "#00bf71",
+                alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {exporting ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={{ fontWeight: "700", color: "white" }}>Ekspor</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function AllTransactions() {
   const router = useRouter();
@@ -243,291 +371,32 @@ export default function AllTransactions() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showFilterBar, setShowFilterBar] = useState(false);
-  const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportType, setExportType] = useState<"excel" | "pdf">("excel");
-  const [exportStartDate, setExportStartDate] = useState("");
-  const [exportEndDate, setExportEndDate] = useState("");
-  const [isStartPickerVisible, setIsStartPickerVisible] = useState(false);
-  const [isEndPickerVisible, setIsEndPickerVisible] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
+  const [exportStartDate, setExportStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [exportEndDate, setExportEndDate] = useState(() => new Date());
+  const [datePickerTarget, setDatePickerTarget] = useState<"start" | "end" | null>(
+    null,
+  );
+  const [exporting, setExporting] = useState(false);
 
-  const exportToExcel = () => {
-    if (filtered.length === 0) {
-      Alert.alert("Error", "Tidak ada transaksi untuk diekspor.");
-      return;
-    }
-    setExportStartDate("");
-    setExportEndDate("");
-    setExportType("excel");
-    setExportModalVisible(true);
+  const openExportModal = (format: ExportFormat) => {
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    setExportFormat(format);
+    setExportStartDate(start);
+    setExportEndDate(new Date());
   };
 
-  const exportToPDF = () => {
-    if (filtered.length === 0) {
-      Alert.alert("Error", "Tidak ada transaksi untuk diekspor.");
-      return;
-    }
-    setExportStartDate("");
-    setExportEndDate("");
-    setExportType("pdf");
-    setExportModalVisible(true);
-  };
-
-  const handleConfirmExport = async () => {
-    const dataToExport = filtered.filter((tx) => {
-      if (!tx.date) return true;
-      const txDateStr = getLocalDateString(tx.date);
-      if (exportStartDate && txDateStr < exportStartDate) return false;
-      if (exportEndDate && txDateStr > exportEndDate) return false;
-      return true;
-    });
-
-    if (dataToExport.length === 0) {
-      Alert.alert("Error", "Tidak ada transaksi dalam rentang tanggal tersebut.");
-      return;
-    }
-
-    setExportModalVisible(false);
-
-    if (exportType === "excel") {
-      await runExcelExport(dataToExport);
-    } else {
-      const exportNetFlow = dataToExport.reduce((s, t) => {
-        if (t.type?.toLowerCase() === "transfer") return s;
-        const amt = Number(t.amount) || 0;
-        return s + (t.type?.toLowerCase() === "income" ? amt : -amt);
-      }, 0);
-      await runPDFExport(dataToExport, exportNetFlow);
-    }
-  };
-
-  const runExcelExport = async (dataToExport: any[]) => {
-    try {
-      const rows = dataToExport.map((tx, idx) => {
-        const matchedCat = findCategory(tx, categories);
-        const matchedWallet = findWallet(tx, wallets);
-        
-        let typeLabel = "Pemasukan";
-        if (tx.type === "expense") typeLabel = "Pengeluaran";
-        else if (tx.type === "transfer") typeLabel = "Transfer";
-
-        return {
-          "No": idx + 1,
-          "Tanggal": getLocalDateString(tx.date),
-          "Nama Transaksi": tx.name || "",
-          "Kategori": matchedCat?.name || "Lainnya",
-          "Dompet": matchedWallet?.name || "Utama",
-          "Tipe": typeLabel,
-          "Jumlah (IDR)": Number(tx.amount) || 0,
-          "Keterangan": tx.description || "-"
-        };
-      });
-
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-
-      // Define styled header (Green background with White bold text)
-      const headerStyle = {
-        font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
-        fill: { patternType: "solid", fgColor: { rgb: "00BF71" } }, // Sakuin Green
-        alignment: { horizontal: "center", vertical: "center" }
-      };
-
-      const cellStyle = {
-        font: { name: "Segoe UI", sz: 10 },
-        alignment: { vertical: "center" }
-      };
-      
-      const numStyle = {
-        font: { name: "Segoe UI", sz: 10 },
-        alignment: { horizontal: "right", vertical: "center" },
-        numFmt: "#,##0"
-      };
-
-      // Apply styles to all cells
-      const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:A1");
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!worksheet[cellAddress]) continue;
-
-          if (R === 0) {
-            worksheet[cellAddress].s = headerStyle;
-          } else {
-            if (C === 6) { // "Jumlah (IDR)"
-              worksheet[cellAddress].s = numStyle;
-            } else {
-              worksheet[cellAddress].s = cellStyle;
-            }
-          }
-        }
-      }
-
-      // Column widths
-      worksheet['!cols'] = [
-        { wch: 6 },   // No
-        { wch: 14 },  // Tanggal
-        { wch: 28 },  // Nama Transaksi
-        { wch: 18 },  // Kategori
-        { wch: 18 },  // Dompet
-        { wch: 14 },  // Tipe
-        { wch: 16 },  // Jumlah (IDR)
-        { wch: 32 }   // Keterangan
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Transaksi");
-      
-      // Write workbook to base64
-      const wbout = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-      
-      // Save locally
-      const filename = `Sakuin_Transaksi_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-      
-      await FileSystem.writeAsStringAsync(fileUri, wbout, {
-        encoding: FileSystem.EncodingType.Base64
-      });
-
-      // Share sheet
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-      } else {
-        Alert.alert("Sukses", `Berkas tersimpan di: ${fileUri}`);
-      }
-    } catch (error) {
-      console.error("Gagal mengekspor Excel:", error);
-      Alert.alert("Gagal", "Gagal mengekspor file Excel. Silakan coba lagi.");
-    }
-  };
-
-  const runPDFExport = async (dataToExport: any[], exportNetFlow: number) => {
-    try {
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      // Add branding headers
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(0, 191, 113); // Sakuin Green
-      doc.text("SAKUIN", 14, 20);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text("Laporan Riwayat Transaksi Keuangan (Mobile)", 14, 25);
-      
-      const todayStr = new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-      doc.text(`Tanggal Ekspor: ${todayStr}`, 14, 30);
-
-      // Summary block background
-      doc.setFillColor(248, 250, 252); // slate-50
-      doc.rect(14, 35, 182, 18, "F");
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105); // slate-600
-      doc.text("RINGKASAN LAPORAN", 18, 41);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.text(`Jumlah Transaksi: ${dataToExport.length}`, 18, 47);
-      
-      const totalText = `Arus Bersih: ${exportNetFlow >= 0 ? "+" : ""}${formatRupiah(exportNetFlow)}`;
-      doc.setFont("helvetica", "bold");
-      if (exportNetFlow >= 0) {
-        doc.setTextColor(0, 191, 113); // Sakuin Green
-      } else {
-        doc.setTextColor(244, 63, 94); // rose-500
-      }
-      doc.text(totalText, 120, 47);
-
-      // Table headers
-      const headers = [["No", "Tanggal", "Nama Transaksi", "Kategori", "Dompet", "Tipe", "Jumlah"]];
-      const tableData = dataToExport.map((tx, idx) => {
-        const matchedCat = findCategory(tx, categories);
-        const matchedWallet = findWallet(tx, wallets);
-        
-        let typeLabel = "Pemasukan";
-        if (tx.type === "expense") typeLabel = "Pengeluaran";
-        else if (tx.type === "transfer") typeLabel = "Transfer";
-
-        const sign = tx.type === "expense" ? "-" : tx.type === "income" ? "+" : "";
-
-        return [
-          idx + 1,
-          getLocalDateString(tx.date),
-          tx.name || "",
-          matchedCat?.name || "Lainnya",
-          matchedWallet?.name || "Utama",
-          typeLabel,
-          `${sign}${formatRupiah(tx.amount).replace("Rp", "").trim()}`
-        ];
-      });
-
-      autoTable(doc, {
-        startY: 58,
-        head: headers,
-        body: tableData,
-        theme: "striped",
-        headStyles: {
-          fillColor: [0, 191, 113],
-          textColor: [255, 255, 255],
-          fontSize: 9,
-          fontStyle: "bold",
-        },
-        bodyStyles: {
-          fontSize: 8,
-          textColor: [51, 65, 85],
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252],
-        },
-        columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 22 },
-          2: { cellWidth: 50 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 28, halign: "right" },
-        },
-        styles: {
-          font: "helvetica",
-        },
-        margin: { top: 58, left: 14, right: 14 },
-        didDrawPage: (data) => {
-          const str = "Halaman " + doc.internal.getNumberOfPages();
-          doc.setFontSize(8);
-          doc.setTextColor(148, 163, 184);
-          doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
-        }
-      });
-
-      // Write PDF to base64
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
-      const filename = `Sakuin_Transaksi_${new Date().toISOString().slice(0, 10)}.pdf`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-      await FileSystem.writeAsStringAsync(fileUri, pdfBase64, {
-        encoding: FileSystem.EncodingType.Base64
-      });
-
-      // Share sheet
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-      } else {
-        Alert.alert("Sukses", `Berkas tersimpan di: ${fileUri}`);
-      }
-    } catch (error) {
-      console.error("Gagal mengekspor PDF:", error);
-      Alert.alert("Gagal", "Gagal mengekspor file PDF. Silakan coba lagi.");
-    }
+  const closeExportModal = () => {
+    if (exporting) return;
+    setExportFormat(null);
+    setDatePickerTarget(null);
   };
 
   const fetchTransactionsData = async () => {
@@ -590,7 +459,7 @@ export default function AllTransactions() {
 
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
-      const wallet = findWallet(tx, wallets);
+      const wallet = wallets.find((w) => (w._id || w.id) === tx.wallet_id);
       const walletName = wallet ? wallet.name : "Wallet";
 
       const matchesSearch =
@@ -600,7 +469,6 @@ export default function AllTransactions() {
 
       const matchesFilter =
         activeFilter === "all" ||
-        tx.category_id === activeFilter ||
         tx.category_id?.slug === activeFilter ||
         tx.category_id?._id === activeFilter;
 
@@ -623,6 +491,40 @@ export default function AllTransactions() {
       return s - amt;
     }
   }, 0);
+
+  const exportCount = useMemo(() => {
+    if (!exportFormat) return 0;
+    return filterByDateRange(filtered, exportStartDate, exportEndDate).length;
+  }, [exportFormat, filtered, exportStartDate, exportEndDate]);
+
+  const handleExport = async () => {
+    if (!exportFormat) return;
+
+    try {
+      setExporting(true);
+      const count = await exportTransactionsFile(
+        filtered,
+        exportFormat,
+        exportStartDate,
+        exportEndDate,
+      );
+
+      if (count === 0) {
+        Alert.alert(
+          "Tidak ada transaksi",
+          "Tidak ada transaksi dalam rentang tanggal yang dipilih.",
+        );
+        return;
+      }
+
+      closeExportModal();
+    } catch (err) {
+      console.error("Export failed:", err);
+      Alert.alert("Gagal", "Gagal mengekspor transaksi. Coba lagi.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -818,89 +720,86 @@ export default function AllTransactions() {
         {/* ── Summary strip ────────────────────────────────────────────── */}
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingVertical: 10,
             backgroundColor: "white",
             borderBottomWidth: 1,
             borderBottomColor: "#f3f4f6",
           }}
         >
-          <Text style={{ fontSize: 12, color: "#9ca3af", fontWeight: "600" }}>
-            {filtered.length} transactions
-          </Text>
-          <Text
+          <View
             style={{
-              fontSize: 12,
-              fontWeight: "700",
-              color: totalFiltered >= 0 ? "#10b981" : "#ef4444",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              paddingTop: 10,
+              paddingBottom: 8,
             }}
           >
-            {totalFiltered >= 0
-              ? `+${formatRupiah(totalFiltered)}`
-              : `-${formatRupiah(Math.abs(totalFiltered))}`}
-          </Text>
-        </View>
+            <Text style={{ fontSize: 12, color: "#9ca3af", fontWeight: "600" }}>
+              {filtered.length} transactions
+            </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: totalFiltered >= 0 ? "#10b981" : "#ef4444",
+              }}
+            >
+              {totalFiltered >= 0
+                ? `+${formatRupiah(totalFiltered)}`
+                : `-${formatRupiah(Math.abs(totalFiltered))}`}
+            </Text>
+          </View>
 
-        {/* ── Export buttons strip ────────────────────────────────────────── */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 20,
-            paddingVertical: 10,
-            backgroundColor: "white",
-            borderBottomWidth: 1,
-            borderBottomColor: "#e5e7eb",
-            gap: 12,
-          }}
-        >
-          <TouchableOpacity
-            onPress={exportToExcel}
-            disabled={filtered.length === 0}
+          <View
             style={{
-              flex: 1,
               flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: filtered.length === 0 ? "#f3f4f6" : "#ecfdf5",
-              borderColor: filtered.length === 0 ? "#e5e7eb" : "#a7f3d0",
-              borderWidth: 1.2,
-              paddingVertical: 10,
-              borderRadius: 12,
-              gap: 6,
-              opacity: filtered.length === 0 ? 0.65 : 1,
+              gap: 10,
+              paddingHorizontal: 20,
+              paddingBottom: 12,
             }}
           >
-            <FileSpreadsheet size={16} color={filtered.length === 0 ? "#9ca3af" : "#00bf71"} strokeWidth={2.5} />
-            <Text style={{ color: filtered.length === 0 ? "#9ca3af" : "#00bf71", fontSize: 13, fontWeight: "700" }}>
-              Export Excel
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={exportToPDF}
-            disabled={filtered.length === 0}
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: filtered.length === 0 ? "#f3f4f6" : "#fff1f2",
-              borderColor: filtered.length === 0 ? "#e5e7eb" : "#fecdd3",
-              borderWidth: 1.2,
-              paddingVertical: 10,
-              borderRadius: 12,
-              gap: 6,
-              opacity: filtered.length === 0 ? 0.65 : 1,
-            }}
-          >
-            <FileText size={16} color={filtered.length === 0 ? "#9ca3af" : "#ef4444"} strokeWidth={2.5} />
-            <Text style={{ color: filtered.length === 0 ? "#9ca3af" : "#ef4444", fontSize: 13, fontWeight: "700" }}>
-              Export PDF
-            </Text>
-          </TouchableOpacity>
+            <Pressable
+              onPress={() => openExportModal("pdf")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: "#fef2f2",
+                borderWidth: 1,
+                borderColor: "#fecaca",
+              }}
+            >
+              <FileText size={16} color="#dc2626" strokeWidth={2.5} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#dc2626" }}>
+                PDF
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => openExportModal("xlsx")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: "#ecfdf5",
+                borderWidth: 1,
+                borderColor: "#a7f3d0",
+              }}
+            >
+              <FileSpreadsheet size={16} color="#059669" strokeWidth={2.5} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#059669" }}>
+                XLSX
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* ── Transaction list ──────────────────────────────────────────── */}
@@ -971,7 +870,6 @@ export default function AllTransactions() {
               <TransactionRow
                 item={item}
                 wallets={wallets}
-                categories={categories}
                 onPress={() =>
                   router.push({
                     pathname: "/(others)/(transaction)/editForm",
@@ -983,273 +881,34 @@ export default function AllTransactions() {
           )}
         />
 
-        {/* ─── EXPORT DATE RANGE MODAL ─── */}
-        <Modal
-          visible={exportModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setExportModalVisible(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(15, 23, 42, 0.6)",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 24,
-                width: "100%",
-                maxWidth: 360,
-                padding: 24,
-                borderWidth: 1,
-                borderColor: "#f1f5f9",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                elevation: 10,
-              }}
-            >
-              {/* Header */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#1e293b" }}>
-                  Export to {exportType === "excel" ? "Excel" : "PDF"}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setExportModalVisible(false)}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: "#f1f5f9",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <X size={16} color="#64748b" strokeWidth={2.5} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{ fontSize: 12, color: "#64748b", fontWeight: "500", lineHeight: 18, marginBottom: 16 }}>
-                Pilih rentang tanggal untuk data transaksi yang ingin Anda ekspor. Saringan aktif tetap akan diterapkan.
-              </Text>
-
-              {/* Presets Grid */}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
-                {/* Preset: Semua Tanggal */}
-                <TouchableOpacity
-                  onPress={() => {
-                    setExportStartDate("");
-                    setExportEndDate("");
-                  }}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderWidth: 1.5,
-                    borderColor: !exportStartDate && !exportEndDate ? "#00bf71" : "#f1f5f9",
-                    backgroundColor: !exportStartDate && !exportEndDate ? "#ecfdf5" : "#fafafa",
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: !exportStartDate && !exportEndDate ? "#00bf71" : "#64748b" }}>
-                    Semua Tanggal
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Preset: Bulan Ini */}
-                <TouchableOpacity
-                  onPress={() => {
-                    const now = new Date();
-                    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-                    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                    setExportStartDate(getLocalDateString(start.toISOString()));
-                    setExportEndDate(getLocalDateString(end.toISOString()));
-                  }}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderWidth: 1.5,
-                    borderColor: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()) ? "#00bf71" : "#f1f5f9",
-                    backgroundColor: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()) ? "#ecfdf5" : "#fafafa",
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()) ? "#00bf71" : "#64748b" }}>
-                    Bulan Ini
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Preset: Bulan Lalu */}
-                <TouchableOpacity
-                  onPress={() => {
-                    const now = new Date();
-                    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                    const end = new Date(now.getFullYear(), now.getMonth(), 0);
-                    setExportStartDate(getLocalDateString(start.toISOString()));
-                    setExportEndDate(getLocalDateString(end.toISOString()));
-                  }}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderWidth: 1.5,
-                    borderColor: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()) ? "#00bf71" : "#f1f5f9",
-                    backgroundColor: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()) ? "#ecfdf5" : "#fafafa",
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: exportStartDate === getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()) ? "#00bf71" : "#64748b" }}>
-                    Bulan Lalu
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Preset: 30 Hari Terakhir */}
-                <TouchableOpacity
-                  onPress={() => {
-                    const end = new Date();
-                    const start = new Date();
-                    start.setDate(end.getDate() - 30);
-                    setExportStartDate(getLocalDateString(start.toISOString()));
-                    setExportEndDate(getLocalDateString(end.toISOString()));
-                  }}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderWidth: 1.5,
-                    borderColor: exportStartDate === getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()) ? "#00bf71" : "#f1f5f9",
-                    backgroundColor: exportStartDate === getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()) ? "#ecfdf5" : "#fafafa",
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: exportStartDate === getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()) ? "#00bf71" : "#64748b" }}>
-                    30 Hari Terakhir
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Custom Inputs */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 24 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                    Dari Tanggal
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setIsStartPickerVisible(true)}
-                    style={{
-                      backgroundColor: "#f8fafc",
-                      borderColor: "#e2e8f0",
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: exportStartDate ? "#334155" : "#94a3b8" }}>
-                      {exportStartDate || "YYYY-MM-DD"}
-                    </Text>
-                    <CalendarDays size={14} color="#64748b" />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={{ fontSize: 16, color: "#cbd5e1", fontWeight: "700", marginTop: 15 }}>─</Text>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                    Sampai Tanggal
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setIsEndPickerVisible(true)}
-                    style={{
-                      backgroundColor: "#f8fafc",
-                      borderColor: "#e2e8f0",
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: exportEndDate ? "#334155" : "#94a3b8" }}>
-                      {exportEndDate || "YYYY-MM-DD"}
-                    </Text>
-                    <CalendarDays size={14} color="#64748b" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setExportModalVisible(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f1f5f9",
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#64748b" }}>Batal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleConfirmExport}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#00bf71",
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    shadowColor: "#00bf71",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 5,
-                    elevation: 3,
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: "white" }}>Ekspor</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ── DateTimePicker Modals ── */}
-        <DateTimePickerModal
-          isVisible={isStartPickerVisible}
-          mode="date"
-          date={exportStartDate ? new Date(exportStartDate) : new Date()}
-          onConfirm={(date) => {
-            setExportStartDate(getLocalDateString(date.toISOString()));
-            setIsStartPickerVisible(false);
-          }}
-          onCancel={() => setIsStartPickerVisible(false)}
-        />
+        {exportFormat && (
+          <ExportDateRangeModal
+            visible={!!exportFormat}
+            format={exportFormat}
+            startDate={exportStartDate}
+            endDate={exportEndDate}
+            transactionCount={exportCount}
+            exporting={exporting}
+            onStartDatePress={() => setDatePickerTarget("start")}
+            onEndDatePress={() => setDatePickerTarget("end")}
+            onCancel={closeExportModal}
+            onExport={handleExport}
+          />
+        )}
 
         <DateTimePickerModal
-          isVisible={isEndPickerVisible}
+          isVisible={datePickerTarget !== null}
           mode="date"
-          date={exportEndDate ? new Date(exportEndDate) : new Date()}
-          onConfirm={(date) => {
-            setExportEndDate(getLocalDateString(date.toISOString()));
-            setIsEndPickerVisible(false);
+          date={datePickerTarget === "start" ? exportStartDate : exportEndDate}
+          onConfirm={(picked) => {
+            if (datePickerTarget === "start") {
+              setExportStartDate(picked);
+            } else {
+              setExportEndDate(picked);
+            }
+            setDatePickerTarget(null);
           }}
-          onCancel={() => setIsEndPickerVisible(false)}
+          onCancel={() => setDatePickerTarget(null)}
         />
       </View>
     </>

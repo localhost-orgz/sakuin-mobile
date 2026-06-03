@@ -88,6 +88,7 @@ const formatDate = (dateStr: string) =>
 const groupByDate = (txs: Transaction[]) => {
   const map: Record<string, Transaction[]> = {};
   txs.forEach((tx) => {
+    if (!tx || !tx.date) return;
     const dateKey = tx.date.split("T")[0];
     if (!map[dateKey]) map[dateKey] = [];
     map[dateKey].push(tx);
