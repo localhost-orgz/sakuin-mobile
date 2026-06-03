@@ -21,6 +21,7 @@ export default function SakuLoading() {
 
   // 1. Animation States 🌀
   const scanAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // 2. OCR API Integration Logic ⏳
@@ -41,6 +42,16 @@ export default function SakuLoading() {
           useNativeDriver: true,
         }),
       ]),
+    ).start();
+
+    // Animasi progress bar (tanpa native driver)
+    Animated.loop(
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 3000,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      })
     ).start();
 
     // Fade in konten
@@ -186,8 +197,8 @@ export default function SakuLoading() {
               <Animated.View
                 className="h-full bg-[#00bf71]"
                 style={{
-                  width: scanAnim.interpolate({
-                    inputRange: [0, SH * 0.7],
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
                     outputRange: ["10%", "100%"],
                   }),
                 }}

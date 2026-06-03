@@ -27,12 +27,15 @@ export default function SakuResult() {
   const result = useMemo(() => {
     if (params.result) {
       try {
-        return JSON.parse(params.result);
+        const parsed = JSON.parse(params.result);
+        if (parsed && typeof parsed === "object") {
+          return parsed;
+        }
       } catch (e) {
         console.error("Failed to parse SakuSnap OCR result", e);
       }
     }
-    return MOCK_STRUK_DATA.data;
+    return MOCK_STRUK_DATA.data || {};
   }, [params.result]);
 
   // Helper buat format Rupiah
@@ -80,7 +83,7 @@ export default function SakuResult() {
               </Text>
 
               <Text className="text-[#00bf71] text-3xl font-bold mb-1">
-                {formatIDR(result.amount)}
+                {formatIDR(result?.amount || 0)}
               </Text>
 
               <View className="flex-row mt-4 gap-2">
@@ -88,7 +91,7 @@ export default function SakuResult() {
                   <Utensils size={14} color="#00bf71" />
 
                   <Text className="text-[#111827] text-xs ml-2 font-medium">
-                    {result.category_name}
+                    {result?.category_name || "Lainnya"}
                   </Text>
                 </View>
 
@@ -96,7 +99,7 @@ export default function SakuResult() {
                   <Calendar size={14} color="#00bf71" />
 
                   <Text className="text-[#111827] text-xs ml-2 font-medium">
-                    {result.date}
+                    {result?.date || new Date().toISOString().split("T")[0]}
                   </Text>
                 </View>
               </View>
@@ -112,11 +115,11 @@ export default function SakuResult() {
                 </Text>
               </View>
 
-              {result.items.map((item: any, index: number) => (
+              {(result?.items || []).map((item: any, index: number) => (
                 <View
                   key={index}
                   className={`flex-row justify-between items-center py-3 ${
-                    index !== result.items.length - 1
+                    index !== (result?.items || []).length - 1
                       ? "border-b border-gray-100"
                       : ""
                   }`}
@@ -127,12 +130,12 @@ export default function SakuResult() {
                     </Text>
 
                     <Text className="text-gray-500 text-xs mt-0.5">
-                      {item.quantity}x @ {formatIDR(item.price)}
+                      {item.quantity}x @ {formatIDR(item.price || 0)}
                     </Text>
                   </View>
 
                   <Text className="text-[#111827] font-bold text-sm">
-                    {formatIDR(item.total)}
+                    {formatIDR(item.total || 0)}
                   </Text>
                 </View>
               ))}
@@ -145,7 +148,7 @@ export default function SakuResult() {
               </Text>
 
               <Text className="text-gray-700 text-sm italic leading-6">
-                "{result.description}"
+                "{result?.description || "Pembelian dari SakuSnap"}"
               </Text>
             </View>
           </ScrollView>
@@ -170,14 +173,14 @@ export default function SakuResult() {
               <TouchableOpacity
                 onPress={() => {
                   setSplitSession({
-                    amount: result.amount,
-                    items: result.items,
-                    category_id: result.category_id,
-                    category_name: result.category_name,
-                    description: result.description,
-                    date: result.date,
+                    amount: result?.amount || 0,
+                    items: result?.items || [],
+                    category_id: result?.category_id,
+                    category_name: result?.category_name,
+                    description: result?.description,
+                    date: result?.date,
                     participants: [{ id: "me", name: "Me" }],
-                    assignedProducts: result.items.map(() => ["me"]),
+                    assignedProducts: (result?.items || []).map(() => ["me"]),
                   });
                 }}
                 className="flex-[2] flex-row bg-[#00bf71] rounded-xl items-center justify-center"

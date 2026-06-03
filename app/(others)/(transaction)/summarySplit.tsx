@@ -121,6 +121,21 @@ export default function SakuSummary() {
     [splitSession],
   );
 
+  const myTotalExpense = useMemo(() => {
+    if (!splitSession || !splitSession.assignedProducts || !splitSession.items) {
+      return summaryData.amount;
+    }
+    return splitSession.assignedProducts.reduce((acc: number, assignedIds: string[], idx: number) => {
+      const item = splitSession.items[idx];
+      if (!item) return acc;
+      const productTotal = item.total;
+
+      if (!assignedIds.includes("me") || assignedIds.length === 0) return acc;
+
+      return acc + productTotal / assignedIds.length;
+    }, 0);
+  }, [splitSession, summaryData.amount]);
+
   const totalItems = summaryData.items.length;
 
   const handleConfirm = async () => {
@@ -161,7 +176,7 @@ export default function SakuSummary() {
         const payload = {
           category_id: resolvedCategoryId,
           wallet_id: selectedWallet._id || selectedWallet.id,
-          amount: String(summaryData.amount),
+          amount: String(myTotalExpense),
           type: "expense",
           name: splitSession?.description
             ? splitSession.description.substring(0, 30)
@@ -214,11 +229,11 @@ export default function SakuSummary() {
           {/* Amount */}
           <View className="bg-white border-y border-gray-100 py-8 items-center mb-8">
             <Text className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2">
-              Total Akhir
+              Total Pengeluaran Saya
             </Text>
 
             <Text className="text-[#111827] text-[40px] font-bold tracking-tight">
-              Rp {summaryData.amount.toLocaleString("id-ID")}
+              Rp {myTotalExpense.toLocaleString("id-ID")}
             </Text>
 
             <Text className="text-gray-400 text-xs mt-2">
