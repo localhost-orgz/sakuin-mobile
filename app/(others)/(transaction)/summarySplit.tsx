@@ -140,6 +140,13 @@ export default function SakuSummary() {
 
   const handleConfirm = async () => {
     if (isRecordTransaction && selectedWallet) {
+      if (selectedWallet.balance < myTotalExpense) {
+        Alert.alert(
+          "Saldo Tidak Cukup",
+          `Saldo ${selectedWallet.name} Anda (Rp${new Intl.NumberFormat("id-ID").format(selectedWallet.balance)}) tidak mencukupi untuk transaksi split bill sebesar Rp${new Intl.NumberFormat("id-ID").format(myTotalExpense)}.`
+        );
+        return;
+      }
       try {
         // Resolve category_id dynamically from state or fallback
         let resolvedCategoryId = selectedCategory?._id || selectedCategory?.id;

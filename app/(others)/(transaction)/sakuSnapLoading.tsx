@@ -88,13 +88,27 @@ export default function SakuLoading() {
           if (res.status === "success" && res.data) {
             // Fetch wallets list to find a default wallet
             let walletId = "w_1";
+            let defaultWallet: any = null;
             try {
               const walletsRes = await apiRequest("/wallets", { method: "GET" });
               if (walletsRes?.status === "success" && Array.isArray(walletsRes.data) && walletsRes.data.length > 0) {
-                walletId = walletsRes.data[0]._id || walletsRes.data[0].id;
+                defaultWallet = walletsRes.data[0];
+                walletId = defaultWallet._id || defaultWallet.id;
               }
             } catch (wErr) {
               console.warn("Failed to fetch wallets for default transaction mapping", wErr);
+            }
+
+            if (defaultWallet) {
+              const expenseAmount = parseFloat(res.data.amount || 0);
+              if (defaultWallet.balance < expenseAmount) {
+                Alert.alert(
+                  "Saldo Tidak Cukup",
+                  `Saldo ${defaultWallet.name} Anda (Rp${new Intl.NumberFormat("id-ID").format(defaultWallet.balance)}) tidak mencukupi untuk transaksi SakuSnap sebesar Rp${new Intl.NumberFormat("id-ID").format(expenseAmount)}.`
+                );
+                router.back();
+                return;
+              }
             }
 
             // Post transaction automatically to /transaction

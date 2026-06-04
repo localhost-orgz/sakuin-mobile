@@ -258,6 +258,16 @@ export default function AddTransaction() {
       return;
     }
 
+    if ((transactionType === "expense" || transactionType === "goal") && selectedWallet) {
+      if (parsedAmount > selectedWallet.balance) {
+        Alert.alert(
+          "Saldo Tidak Cukup",
+          `Saldo ${selectedWallet.name} Anda (Rp${new Intl.NumberFormat("id-ID").format(selectedWallet.balance)}) tidak mencukupi untuk melakukan transaksi sebesar Rp${amount}.`
+        );
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
 
